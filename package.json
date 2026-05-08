@@ -2,6 +2,9 @@
   "name": "astro-knowledge-engine",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -27,7 +30,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "reactflow": "^11.11.0",
-    "swisseph": "^0.5.17",
+    "swisseph": "0.5.17",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

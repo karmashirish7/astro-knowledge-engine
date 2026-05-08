@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react'
 import { motion } from 'framer-motion'
-import type { DashaTree, Antardasha } from '@/lib/astrology/dasha/types'
+import type { DashaTree, Antardasha, DashaPeriod } from '@/lib/astrology/dasha/types'
 import { yoginiForPlanet, YOGINI_SEQUENCE } from '@/lib/astrology/dasha/yogini'
+import { computeSubPeriods } from '@/lib/astrology/dasha/vimshottari'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -246,6 +247,288 @@ function TimelineStrip({
   )
 }
 
+// ── Nested Dasha Tree ──────────────────────────────────────────────────────
+
+type DashaLevel = 'MD' | 'AD' | 'PD' | 'SD' | 'Prana'
+
+const LEVEL_LABELS: Record<DashaLevel, string> = {
+  MD: 'Mahadasha', AD: 'Antardasha', PD: 'Pratyantar', SD: 'Sookshma', Prana: 'Prana',
+}
+const INDENT: Record<DashaLevel, number> = {
+  MD: 0, AD: 16, PD: 32, SD: 48, Prana: 64,
+}
+
+function isActive(p: DashaPeriod, now: Date) {
+  return now >= p.startDate && now < p.endDate
+}
+
+function fmtShort(d: Date) {
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+// A single expandable row in the tree
+function DashaRow({
+  level, period, getLabel, now, depth, hasChildren,
+  expanded, onToggle,
+}: {
+  level:       DashaLevel
+  period:      DashaPeriod
+  getLabel:    (p: string) => string
+  now:         Date
+  depth:       number
+  hasChildren: boolean
+  expanded:    boolean
+  onToggle:    () => void
+}) {
+  const active = isActive(period, now)
+  const color  = PLANET_COLORS[period.planet] ?? '#94a3b8'
+  const past   = period.endDate <= now
+
+  return (
+    <div
+      className="flex items-center gap-2 py-1 px-2 rounded-md cursor-pointer select-none transition-colors"
+      style={{
+        marginLeft: INDENT[level],
+        background: active ? `${color}18` : 'transparent',
+        opacity: past ? 0.45 : 1,
+      }}
+      onClick={hasChildren ? onToggle : undefined}
+    >
+      {/* Expand toggle */}
+      <span className="w-3 flex-shrink-0 text-[10px]" style={{ color: 'var(--text-muted)' }}>
+        {hasChildren ? (expanded ? '▼' : '▶') : '·'}
+      </span>
+
+      {/* Color dot */}
+      <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: color }} />
+
+      {/* Planet / label */}
+      <span className="text-xs font-semibold flex-shrink-0" style={{ color: active ? color : 'var(--text-secondary)' }}>
+        {getLabel(period.planet)}
+      </span>
+      {getLabel(period.planet) !== period.planet && (
+        <span className="text-[10px] flex-shrink-0" style={{ color: 'var(--text-muted)' }}>
+          {period.planet}
+        </span>
+      )}
+
+      {/* Level badge */}
+      <span className="text-[9px] px-1 rounded flex-shrink-0 ml-0.5"
+        style={{ background: 'var(--bg-hover)', color: 'var(--text-muted)' }}>
+        {LEVEL_LABELS[level]}
+      </span>
+
+      {/* Active badge */}
+      {active && (
+        <span className="text-[9px] px-1.5 py-0.5 rounded-full font-bold flex-shrink-0"
+          style={{ background: `${color}33`, color }}>
+          ▶ now
+        </span>
+      )}
+
+      {/* Dates + duration */}
+      <span className="ml-auto text-[10px] flex-shrink-0 text-right space-x-2" style={{ color: 'var(--text-muted)' }}>
+        <span>{fmtShort(period.startDate)}</span>
+        <span>→</span>
+        <span>{fmtShort(period.endDate)}</span>
+        <span style={{ color: active ? color : 'var(--text-muted)' }}>
+          ({fmtDuration(period.durationYears)})
+        </span>
+      </span>
+    </div>
+  )
+}
+
+// Recursive SD + Prana rows
+function SookshmaRows({
+  pd, getLabel, now, openSD, setOpenSD,
+}: {
+  pd:       DashaPeriod
+  getLabel: (p: string) => string
+  now:      Date
+  openSD:   Set<string>
+  setOpenSD: (fn: (prev: Set<string>) => Set<string>) => void
+}) {
+  const sds = useMemo(() => computeSubPeriods(pd), [pd])
+  return (
+    <>
+      {sds.map(sd => {
+        const sdKey  = `${sd.planet}|${sd.startDate.getTime()}`
+        const sdOpen = openSD.has(sdKey)
+        const pranas = sdOpen ? computeSubPeriods(sd) : null
+        return (
+          <div key={sdKey}>
+            <DashaRow
+              level="SD" period={sd} getLabel={getLabel} now={now}
+              depth={4} hasChildren expanded={sdOpen}
+              onToggle={() => setOpenSD(prev => {
+                const next = new Set(prev)
+                next.has(sdKey) ? next.delete(sdKey) : next.add(sdKey)
+                return next
+              })}
+            />
+            {sdOpen && pranas && pranas.map(pr => (
+              <DashaRow
+                key={`${pr.planet}|${pr.startDate.getTime()}`}
+                level="Prana" period={pr} getLabel={getLabel} now={now}
+                depth={5} hasChildren={false} expanded={false}
+                onToggle={() => {}}
+              />
+            ))}
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
+function VimshottariTreeView({ tree, getLabel }: { tree: DashaTree; getLabel: (p: string) => string }) {
+  const now = useMemo(() => new Date(), [])
+
+  // Default open: currently running MD and AD
+  const activeMdIdx = tree.findIndex(m => isActive(m, now))
+  const activeMd    = activeMdIdx >= 0 ? tree[activeMdIdx] : null
+  const activeAd    = activeMd?.antardashas.find(a => isActive(a, now)) ?? null
+
+  const defaultMdKey = activeMd ? `${activeMd.planet}|${activeMd.startDate.getTime()}` : ''
+  const defaultAdKey = activeAd ? `${activeAd.planet}|${activeAd.startDate.getTime()}` : ''
+
+  const [openMDs, setOpenMDs] = useState<Set<string>>(() => new Set(defaultMdKey ? [defaultMdKey] : []))
+  const [openADs, setOpenADs] = useState<Set<string>>(() => new Set(defaultAdKey ? [defaultAdKey] : []))
+  const [openPDs, setOpenPDs] = useState<Set<string>>(() => new Set<string>())
+  const [openSD,  setOpenSD]  = useState<Set<string>>(() => new Set<string>())
+
+  const toggle = (set: Set<string>, key: string, setter: (fn: (p: Set<string>) => Set<string>) => void) => {
+    setter(prev => {
+      const next = new Set(prev)
+      next.has(key) ? next.delete(key) : next.add(key)
+      return next
+    })
+  }
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-hover)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          Full Dasha Tree · MD → AD → PD → SD → Prana
+        </span>
+        <div className="flex gap-1">
+          <button onClick={() => { setOpenMDs(new Set(tree.map(m => `${m.planet}|${m.startDate.getTime()}`))); }}
+            className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            Expand All MD
+          </button>
+          <button onClick={() => { setOpenMDs(new Set()); setOpenADs(new Set()); setOpenPDs(new Set()); setOpenSD(new Set()) }}
+            className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            Collapse All
+          </button>
+        </div>
+      </div>
+
+      {/* Rows */}
+      <div className="p-2 space-y-0.5 max-h-[600px] overflow-y-auto">
+        {tree.map(md => {
+          const mdKey  = `${md.planet}|${md.startDate.getTime()}`
+          const mdOpen = openMDs.has(mdKey)
+          return (
+            <div key={mdKey}>
+              <DashaRow
+                level="MD" period={md} getLabel={getLabel} now={now}
+                depth={1} hasChildren expanded={mdOpen}
+                onToggle={() => toggle(openMDs, mdKey, setOpenMDs)}
+              />
+              {mdOpen && md.antardashas.map(ad => {
+                const adKey  = `${ad.planet}|${ad.startDate.getTime()}`
+                const adOpen = openADs.has(adKey)
+                return (
+                  <div key={adKey}>
+                    <DashaRow
+                      level="AD" period={ad} getLabel={getLabel} now={now}
+                      depth={2} hasChildren expanded={adOpen}
+                      onToggle={() => toggle(openADs, adKey, setOpenADs)}
+                    />
+                    {adOpen && ad.pratyantardashas.map(pd => {
+                      const pdKey  = `${pd.planet}|${pd.startDate.getTime()}`
+                      const pdOpen = openPDs.has(pdKey)
+                      return (
+                        <div key={pdKey}>
+                          <DashaRow
+                            level="PD" period={pd} getLabel={getLabel} now={now}
+                            depth={3} hasChildren expanded={pdOpen}
+                            onToggle={() => toggle(openPDs, pdKey, setOpenPDs)}
+                          />
+                          {pdOpen && (
+                            <SookshmaRows
+                              pd={pd} getLabel={getLabel} now={now}
+                              openSD={openSD} setOpenSD={setOpenSD}
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function YoginiTreeView({ tree }: { tree: DashaTree }) {
+  const now    = useMemo(() => new Date(), [])
+  const activeMd = tree.find(m => isActive(m, now)) ?? null
+  const defaultMdKey = activeMd ? `${activeMd.planet}|${activeMd.startDate.getTime()}` : ''
+  const [openMDs, setOpenMDs] = useState<Set<string>>(() => new Set(defaultMdKey ? [defaultMdKey] : []))
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
+      <div className="flex items-center justify-between px-4 py-2.5 border-b"
+        style={{ borderColor: 'var(--border)', background: 'var(--bg-hover)' }}>
+        <span className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>
+          Full Yogini Tree · MD → AD
+        </span>
+        <div className="flex gap-1">
+          <button onClick={() => setOpenMDs(new Set(tree.map(m => `${m.planet}|${m.startDate.getTime()}`)))}
+            className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            Expand All
+          </button>
+          <button onClick={() => setOpenMDs(new Set())}
+            className="text-[10px] px-2 py-0.5 rounded" style={{ background: 'var(--bg-card)', color: 'var(--text-muted)' }}>
+            Collapse All
+          </button>
+        </div>
+      </div>
+      <div className="p-2 space-y-0.5 max-h-[600px] overflow-y-auto">
+        {tree.map(md => {
+          const mdKey  = `${md.planet}|${md.startDate.getTime()}`
+          const mdOpen = openMDs.has(mdKey)
+          return (
+            <div key={mdKey}>
+              <DashaRow
+                level="MD" period={md} getLabel={yoginiForPlanet} now={now}
+                depth={1} hasChildren expanded={mdOpen}
+                onToggle={() => setOpenMDs(prev => { const n = new Set(prev); n.has(mdKey) ? n.delete(mdKey) : n.add(mdKey); return n })}
+              />
+              {mdOpen && md.antardashas.map(ad => (
+                <DashaRow
+                  key={`${ad.planet}|${ad.startDate.getTime()}`}
+                  level="AD" period={ad} getLabel={yoginiForPlanet} now={now}
+                  depth={2} hasChildren={false} expanded={false}
+                  onToggle={() => {}}
+                />
+              ))}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ── Main DashaView ─────────────────────────────────────────────────────────
 
 interface Props {
@@ -332,6 +615,9 @@ export default function DashaView({ vimshottariTree, yoginiTree, birthDate }: Pr
                 getLabel={p => p}
               />
             </div>
+
+            {/* Full nested tree */}
+            <VimshottariTreeView tree={vimshottariTree!} getLabel={p => p} />
           </div>
         ) : (
           <Empty />
@@ -385,6 +671,9 @@ export default function DashaView({ vimshottariTree, yoginiTree, birthDate }: Pr
                 getLabel={yoginiForPlanet}
               />
             </div>
+
+            {/* Full nested tree */}
+            <YoginiTreeView tree={yoginiTree!} />
           </div>
         ) : (
           <Empty />

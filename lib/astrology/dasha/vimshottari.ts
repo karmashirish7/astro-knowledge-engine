@@ -130,6 +130,24 @@ export function buildDashaTree(birthDate: Date, moonLon: number): DashaTree {
   return tree
 }
 
+/**
+ * Computes the 9 sub-periods of any Vimshottari period on the fly.
+ * Used for Sookshma (under PD) and Prana (under SD).
+ */
+export function computeSubPeriods(period: DashaPeriod): DashaPeriod[] {
+  const idx = DASHA_SEQUENCE.findIndex(d => d.planet === period.planet)
+  const start = idx === -1 ? 0 : idx
+  const seq = [...DASHA_SEQUENCE.slice(start), ...DASHA_SEQUENCE.slice(0, start)]
+  let cursor = period.startDate.getTime()
+  return seq.map(entry => {
+    const subYears = (period.durationYears * entry.years) / TOTAL_YEARS
+    const s = new Date(cursor)
+    const e = new Date(cursor + subYears * MS_PER_YEAR)
+    cursor = e.getTime()
+    return { planet: entry.planet, startDate: s, endDate: e, durationYears: subYears }
+  })
+}
+
 /** Returns the current MD / AD / PD for a given date */
 export function getCurrentDasha(tree: DashaTree, date: Date = new Date()): CurrentDasha | null {
   const md = tree.find(m => date >= m.startDate && date < m.endDate)
