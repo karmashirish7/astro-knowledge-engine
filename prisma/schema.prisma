@@ -1,0 +1,260 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Knowledge Layer ───────────────────────────────────────────────────────────
+
+model KnowledgeEntry {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  category    String
+  tags        String   @default("[]")
+  dictums     String   @default("[]")
+  examples    String   @default("[]")
+  source      String   @default("")
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  relationsFrom EntryRelation[] @relation("FromEntry")
+  relationsTo   EntryRelation[] @relation("ToEntry")
+
+  @@map("knowledge_entries")
+}
+
+model EntryRelation {
+  id            String @id @default(cuid())
+  fromId        String
+  toId          String
+  relationLabel String @default("")
+  weight        Float  @default(1.0)
+
+  from KnowledgeEntry @relation("FromEntry", fields: [fromId], references: [id], onDelete: Cascade)
+  to   KnowledgeEntry @relation("ToEntry", fields: [toId], references: [id], onDelete: Cascade)
+
+  @@unique([fromId, toId])
+  @@map("entry_relations")
+}
+
+// ── Research Layer ────────────────────────────────────────────────────────────
+
+model Dictum {
+  id             String   @id @default(cuid())
+  rule           String
+  entities       String   @default("[]")
+  interpretation String   @default("")
+  tags           String   @default("[]")
+  strength       String   @default("Strong")
+  source         String   @default("")
+  category       String   @default("")   // planet | house | yoga | nakshatra | timing
+  conditionsJson String   @default("{}") // machine-queryable conditions: { saturnHouse: 7, marsInKendra: true }
+  verifiedCount  Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  verifications DictumVerification[]
+  observations  Observation[]
+
+  @@map("dictums")
+}
+
+model DictumVerification {
+  id        String   @id @default(cuid())
+  dictumId  String
+  chartId   String
+  verdict   String   @default("unclear") // "confirmed" | "refuted" | "partial" | "unclear"
+  note      String   @default("")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dictum Dictum @relation(fields: [dictumId], references: [id], onDelete: Cascade)
+  chart  Chart  @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@unique([dictumId, chartId])
+  @@map("dictum_verifications")
+}
+
+// ── Observation & Prediction Layer ────────────────────────────────────────────
+
+model Observation {
+  id         String   @id @default(cuid())
+  chartId    String
+  dictumId   String?
+  statement  String
+  status     String   @default("unclear") // "true" | "false" | "unclear"
+  confidence Int?                          // 1–10
+  category   String   @default("")         // personality | health | career | relationships | timing
+  notes      String   @default("")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  chart  Chart   @relation(fields: [chartId], references: [id], onDelete: Cascade)
+  dictum Dictum? @relation(fields: [dictumId], references: [id], onDelete: SetNull)
+
+  @@map("observations")
+}
+
+model Prediction {
+  id           String    @id @default(cuid())
+  chartId      String
+  prediction   String
+  predictedAt  DateTime  @default(now())
+  targetDate   DateTime?
+  resolvedAt   DateTime?
+  outcome      String    @default("pending") // "pending" | "correct" | "incorrect" | "partial"
+  accuracy     Int?                           // 1–10
+  dashaContext String    @default("")         // e.g. "Saturn MD / Venus AD"
+  notes        String    @default("")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  chart Chart @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@map("predictions")
+}
+
+// ── Chart Layer ───────────────────────────────────────────────────────────────
+
+model Chart {
+  id         String   @id @default(cuid())
+  name       String
+  gender     String   @default("")
+
+  // Birth details
+  birthDate  String   @default("")
+  birthTime  String   @default("")
+  birthPlace String   @default("")
+  birthLat   String   @default("")
+  birthLon   String   @default("")
+  timezone   String   @default("+05:30")
+
+  // Computed display fields (structured data lives in PlanetaryData)
+  lagna               String @default("")    // lagnaSign number "1"–"12"
+  calculatedPositions String @default("{}")  // full ChartPositions JSON for display/export
+
+  // Meta
+  source      String  @default("")
+  reliability Int?
+  notes       String  @default("")
+  keywords    String  @default("[]")
+  tagsList    String  @default("[]")
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  planetaryData       PlanetaryData?
+  chartNotes          ChartNote[]
+  dictumVerifications DictumVerification[]
+  observations        Observation[]
+  predictions         Prediction[]
+
+  @@map("charts")
+}
+
+model PlanetaryData {
+  id      String @id @default(cuid())
+  chartId String @unique
+  chart   Chart  @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  // Lagna
+  ascSign      String @default("")
+  ascDegree    Float  @default(0)
+  ascNakshatra String @default("")
+
+  // Planet signs (searchable)
+  sunSign      String @default("")
+  moonSign     String @default("")
+  marsSign     String @default("")
+  mercurySign  String @default("")
+  jupiterSign  String @default("")
+  venusSign    String @default("")
+  saturnSign   String @default("")
+  rahuSign     String @default("")
+  ketuSign     String @default("")
+
+  // Planet houses — whole sign (searchable)
+  sunHouse     Int @default(0)
+  moonHouse    Int @default(0)
+  marsHouse    Int @default(0)
+  mercuryHouse Int @default(0)
+  jupiterHouse Int @default(0)
+  venusHouse   Int @default(0)
+  saturnHouse  Int @default(0)
+  rahuHouse    Int @default(0)
+  ketuHouse    Int @default(0)
+
+  // Planet degrees within sign
+  sunDegree     Float @default(0)
+  moonDegree    Float @default(0)
+  marsDegree    Float @default(0)
+  mercuryDegree Float @default(0)
+  jupiterDegree Float @default(0)
+  venusDegree   Float @default(0)
+  saturnDegree  Float @default(0)
+  rahuDegree    Float @default(0)
+  ketuDegree    Float @default(0)
+
+  // Planet nakshatras (searchable)
+  sunNakshatra      String @default("")
+  moonNakshatra     String @default("")
+  marsNakshatra     String @default("")
+  mercuryNakshatra  String @default("")
+  jupiterNakshatra  String @default("")
+  venusNakshatra    String @default("")
+  saturnNakshatra   String @default("")
+  rahuNakshatra     String @default("")
+  ketuNakshatra     String @default("")
+
+  // Planet dignities (searchable)
+  sunDignity      String @default("")
+  moonDignity     String @default("")
+  marsDignity     String @default("")
+  mercuryDignity  String @default("")
+  jupiterDignity  String @default("")
+  venusDignity    String @default("")
+  saturnDignity   String @default("")
+
+  // Karakas
+  atmakaraka  String @default("")
+  darakaraka  String @default("")
+
+  // Full serialized data
+  rawJson          String @default("{}")
+  dashaJson        String @default("{}")
+  yoginiDashaJson  String @default("{}")
+  vargaJson        String @default("{}")
+
+  @@map("planetary_data")
+}
+
+model ChartNote {
+  id        String   @id @default(cuid())
+  chartId   String
+  section   String
+  content   String   @default("")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  chart Chart @relation(fields: [chartId], references: [id], onDelete: Cascade)
+
+  @@map("chart_notes")
+}
+
+// ── Dump Layer ────────────────────────────────────────────────────────────────
+
+model DumpNote {
+  id        String   @id @default(cuid())
+  rawText   String
+  processed Boolean  @default(false)
+  extracted String   @default("{}")
+  createdAt DateTime @default(now())
+
+  @@map("dump_notes")
+}

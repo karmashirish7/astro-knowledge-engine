@@ -1,0 +1,73 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0A0A0F;
+  --color-foreground: #F1F5F9;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --bg-primary: #0A0A0F;
+  --bg-secondary: #111118;
+  --bg-card: #16161F;
+  --bg-hover: #1E1E2A;
+  --border: #2A2A3A;
+  --accent-purple: #7C3AED;
+  --accent-amber: #F59E0B;
+  --accent-blue: #3B82F6;
+  --accent-emerald: #10B981;
+  --text-primary: #F1F5F9;
+  --text-secondary: #94A3B8;
+  --text-muted: #475569;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #2A2A3A; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A3A50; }
+
+.glow-purple { box-shadow: 0 0 24px rgba(124,58,237,0.35); }
+.glow-amber  { box-shadow: 0 0 24px rgba(245,158,11,0.35); }
+
+/* React Flow overrides */
+.react-flow__background pattern circle { fill: #2A2A3A !important; }
+.react-flow__controls {
+  background: #16161F !important;
+  border: 1px solid #2A2A3A !important;
+  border-radius: 8px !important;
+  box-shadow: none !important;
+}
+.react-flow__controls-button {
+  background: #16161F !important;
+  border-bottom: 1px solid #2A2A3A !important;
+  color: #94A3B8 !important;
+  fill: #94A3B8 !important;
+}
+.react-flow__controls-button:hover { background: #1E1E2A !important; }
+.react-flow__minimap {
+  background: #16161F !important;
+  border: 1px solid #2A2A3A !important;
+  border-radius: 8px !important;
+}
+.react-flow__edge-path { stroke-width: 1.5 !important; }
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.pulse-dot { animation: pulse-glow 2s ease-in-out infinite; }
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50%       { transform: translateY(-6px); }
+}
+.float { animation: float 4s ease-in-out infinite; }
