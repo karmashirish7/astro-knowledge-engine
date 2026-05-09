@@ -3,8 +3,9 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion } from 'framer-motion'
+import { useSession, signOut } from 'next-auth/react'
 import {
-  LayoutDashboard, Network, CircleDot, Zap, FileText, Star, BookOpen, FlaskConical, Search,
+  LayoutDashboard, Network, CircleDot, Zap, FileText, Star, BookOpen, FlaskConical, Search, LogOut, User,
 } from 'lucide-react'
 
 const TOP_NAV = [
@@ -34,6 +35,7 @@ const KNOWLEDGE_SECTIONS = [
 export default function Sidebar() {
   const path = usePathname()
   const inKnowledge = path.startsWith('/knowledge')
+  const { data: session } = useSession()
 
   return (
     <aside
@@ -113,7 +115,30 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      <div className="p-3 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+      <div className="p-3 border-t flex-shrink-0 space-y-2" style={{ borderColor: 'var(--border)' }}>
+        {session?.user && (
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg"
+            style={{ background: 'var(--bg-hover)' }}>
+            <div className="w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0"
+              style={{ background: '#7C3AED33' }}>
+              <User className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary)' }}>
+                {session.user.name}
+              </p>
+              <p className="text-[10px] truncate" style={{ color: 'var(--text-muted)' }}>
+                {session.user.email}
+              </p>
+            </div>
+            <button onClick={() => signOut({ callbackUrl: '/login' })}
+              className="p-1 rounded transition-colors hover:bg-red-500/20 flex-shrink-0"
+              title="Sign out"
+              style={{ color: 'var(--text-muted)' }}>
+              <LogOut className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
         <p className="text-[10px] text-center" style={{ color: 'var(--text-muted)' }}>
           ॐ तत् सत्
         </p>
