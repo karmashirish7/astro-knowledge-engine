@@ -389,7 +389,7 @@ export default function ChartDetailPage() {
 
   const calc = (() => { try { return JSON.parse(chart.calculatedPositions || '{}') } catch { return {} } })()
   const hasPrecise = !!(calc && calc.planets)
-  const planets = (() => { try { return JSON.parse(chart.planets || '{}') } catch { return {} } })()
+  const planets = (calc?.houseNumbers ?? {})
   const lagna = parseInt(chart.lagna) || 1
 
   const dashaTree = (() => {

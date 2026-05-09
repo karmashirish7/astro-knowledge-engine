@@ -396,12 +396,11 @@ export default function PlaygroundPage() {
                   {filteredCharts.map(chart => {
                     const pd: PlanetaryData | null = chart.planetaryData ?? null
                     const lagnaSign = pd ? (['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces'].indexOf(pd.ascSign) + 1) || 1 : (parseInt(chart.lagna) || 1)
-                    const planetHouses: Record<string, number> = pd
-                      ? { Sun: pd.sunHouse, Moon: pd.moonHouse, Mars: pd.marsHouse, Mercury: pd.mercuryHouse, Jupiter: pd.jupiterHouse, Venus: pd.venusHouse, Saturn: pd.saturnHouse, Rahu: pd.rahuHouse, Ketu: pd.ketuHouse }
-                      : (() => { try { return JSON.parse(chart.planets || '{}') } catch { return {} } })()
-
                     const calc = (() => { try { return JSON.parse(chart.calculatedPositions || '{}') } catch { return {} } })()
                     const hasPrecise = !!(calc?.planets)
+                    const planetHouses: Record<string, number> = pd
+                      ? { Sun: pd.sunHouse, Moon: pd.moonHouse, Mars: pd.marsHouse, Mercury: pd.mercuryHouse, Jupiter: pd.jupiterHouse, Venus: pd.venusHouse, Saturn: pd.saturnHouse, Rahu: pd.rahuHouse, Ketu: pd.ketuHouse }
+                      : (calc?.houseNumbers ?? {})
                     const tags: string[] = (() => { try { return JSON.parse(chart.tagsList || '[]') } catch { return [] } })()
 
                     const { matched, missing, pct } = matchDictumToChart(selectedDictum, pd)

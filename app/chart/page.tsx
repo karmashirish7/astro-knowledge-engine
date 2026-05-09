@@ -552,7 +552,7 @@ export default function ChartPage() {
   // Derived state
   const calc          = selected ? parseJ(selected.calculatedPositions) : {}
   const hasPrecise    = !!(calc?.planets)
-  const storedPlanets = selected ? parseJ(selected.planets, {}) : {}
+  const storedPlanets = selected ? (parseJ(selected.calculatedPositions, {})?.houseNumbers ?? {}) : {}
   const activePlanets = Object.keys(manualPlanets).length > 0 ? manualPlanets : storedPlanets
   const activeLagna   = Object.keys(manualPlanets).length > 0 ? manualLagna : (parseInt(selected?.lagna) || 1)
 

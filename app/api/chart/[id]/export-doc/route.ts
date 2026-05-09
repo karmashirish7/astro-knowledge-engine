@@ -137,7 +137,7 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
   const d1Lagna   = parseInt(chart.lagna) || 1
   const d1Planets: Record<string, number> = hasPrecise
     ? Object.fromEntries(Object.entries(calc.houseNumbers ?? {}).map(([k, v]) => [k, v as number]))
-    : (() => { try { return JSON.parse(chart.planets || '{}') } catch { return {} } })()
+    : (calc?.houseNumbers ?? {})
   const d1Degrees: Record<string, number> = hasPrecise
     ? Object.fromEntries(Object.entries(calc.planets ?? {}).map(([k, v]: [string, any]) => [k, v.degrees as number]))
     : {}
