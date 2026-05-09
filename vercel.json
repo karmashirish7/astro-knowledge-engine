@@ -1,1 +1,3 @@
-{}
+{
+  "installCommand": "pip3 install setuptools && npm install"
+}
