@@ -468,7 +468,7 @@ export default function CategoryPage() {
         onClose={() => { setAddOpen(false); setEditOpen(false); setForm(EMPTY_FORM) }}
         title={editOpen ? `Edit ${category} Entry` : `Add ${category} Entry`}
       >
-        <EntryForm />
+        {EntryForm()}
       </Modal>
     </div>
   )
