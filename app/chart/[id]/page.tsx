@@ -307,8 +307,8 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
   return (
     <div ref={ref} className="relative">
       <button onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold"
-        style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
+        className="flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold"
+        style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 120 }}>
         {currentLabel}
         <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
@@ -759,7 +759,7 @@ export default function ChartDetailPage() {
               onSelect={setSection} onDeleteCustom={deleteCustomSection} onAddCustom={addCustomSection}
             />
             {subtitle && (
-              <p className="text-xs leading-relaxed flex-1 pt-1.5" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs leading-relaxed flex-1 pt-2 font-semibold" style={{ color: '#fff' }}>
                 {subtitle}
               </p>
             )}

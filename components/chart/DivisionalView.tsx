@@ -5,64 +5,68 @@ import NorthIndianKundali from './NorthIndianKundali'
 import { VARGAS, computeDivisional } from '@/lib/astrology/divisional'
 
 interface Props {
-  calc:          any    // raw calculatedPositions object (parsed JSON)
-  d1Lagna:       number // 1–12
-  d1Planets:     Record<string, number>
-  d1Degrees?:    Record<string, number>
-  onHouseClick?: (house: number) => void
+  calc:                  any
+  d1Lagna:               number   // 1–12 sign
+  d1Planets:             Record<string, number>
+  d1Degrees?:            Record<string, number>
+  onHouseClick?:         (house: number) => void
 }
 
 export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {}, onHouseClick }: Props) {
-  const [divN, setDivN] = useState(9)
+  const [divN, setDivN]               = useState(9)
+  const [visualLagnaHouse, setVLagna] = useState(1)
 
   const hasPrecise = !!(calc?.lagna?.longitude && calc?.planets)
-
-  const div = hasPrecise ? computeDivisional(calc, divN) : null
-  const selected = VARGAS.find(v => v.n === divN) ?? VARGAS[4]
+  const div        = hasPrecise ? computeDivisional(calc, divN) : null
+  const selected   = VARGAS.find(v => v.n === divN) ?? VARGAS[4]
 
   return (
     <div className="w-full">
-      {/* Two-chart row */}
       <div className="flex gap-4 w-full">
 
-        {/* D1 — always shown */}
+        {/* D1 — rotatable */}
         <div className="flex-1 min-w-0">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider"
-              style={{ color: '#A78BFA' }}>
+            <span className="text-xs font-bold tracking-wider" style={{ color: '#A78BFA' }}>
               D1 · Rasi
             </span>
+            {visualLagnaHouse !== 1 && (
+              <button
+                onClick={() => setVLagna(1)}
+                className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-white/5"
+                style={{ color: '#EC4899', border: '1px solid #EC489933' }}>
+                ↺ Reset lagna
+              </button>
+            )}
           </div>
           <NorthIndianKundali
             lagna={d1Lagna}
             planets={d1Planets}
             planetDegrees={d1Degrees}
             onHouseClick={onHouseClick}
-            highlightAspects={true}
+            visualLagnaHouse={visualLagnaHouse}
+            onVisualLagnaChange={setVLagna}
           />
+          {visualLagnaHouse !== 1 && (
+            <p className="text-[10px] mt-1 text-center" style={{ color: '#EC4899' }}>
+              Rotated · As = actual ascendant
+            </p>
+          )}
         </div>
 
-        {/* Divisional chart — dropdown driven */}
+        {/* Divisional chart */}
         <div className="flex-1 min-w-0">
           <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider"
-              style={{ color: '#10B981' }}>
+            <span className="text-xs font-bold tracking-wider" style={{ color: '#10B981' }}>
               {selected.abbr} · {selected.name}
             </span>
             <select
               value={divN}
               onChange={e => setDivN(Number(e.target.value))}
               className="text-xs px-2 py-0.5 rounded outline-none cursor-pointer"
-              style={{
-                background: 'var(--bg-hover)',
-                color: 'var(--text-secondary)',
-                border: '1px solid var(--border)',
-              }}
-            >
+              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
               {VARGAS.map(v => (
-                <option key={v.n} value={v.n}>
-                  {v.abbr} · {v.name}
-                </option>
+                <option key={v.n} value={v.n}>{v.abbr} · {v.name}</option>
               ))}
             </select>
           </div>
@@ -75,11 +79,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
               </p>
             </div>
           ) : div ? (
-            <NorthIndianKundali
-              lagna={div.lagna}
-              planets={div.planets}
-              planetDegrees={div.planetDegrees}
-            />
+            <NorthIndianKundali lagna={div.lagna} planets={div.planets} planetDegrees={div.planetDegrees} />
           ) : null}
         </div>
       </div>

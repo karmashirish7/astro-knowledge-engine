@@ -82,8 +82,8 @@ function DashaBar({ level, planet, label, start, end, pct, color, sublevel }: Da
         </div>
       </div>
 
-      {/* Progress bar */}
-      <div className="h-2 rounded-full overflow-hidden mb-1.5" style={{ background: 'var(--bg-primary)' }}>
+      {/* Progress bar with today pointer */}
+      <div className="h-2 rounded-full overflow-hidden mb-1.5 relative" style={{ background: 'var(--bg-primary)' }}>
         <motion.div
           className="h-full rounded-full"
           style={{ background: color }}
@@ -91,6 +91,9 @@ function DashaBar({ level, planet, label, start, end, pct, color, sublevel }: Da
           animate={{ width: `${pct}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
         />
+        {/* Today marker — glowing pin at current position */}
+        <div className="absolute top-0 bottom-0 w-0.5 z-10"
+          style={{ left: `${pct}%`, background: '#EC4899', boxShadow: '0 0 6px #EC4899', transform: 'translateX(-50%)' }} />
       </div>
 
       <div className="flex justify-between text-[10px]" style={{ color: 'var(--text-muted)' }}>
@@ -107,7 +110,7 @@ function DashaBar({ level, planet, label, start, end, pct, color, sublevel }: Da
 
 // ── Timeline strip ─────────────────────────────────────────────────────────
 
-type ZoomLevel = 'full' | '20y' | '5y'
+type ZoomLevel = 'full' | '20y' | '10y' | '5y' | '1y'
 
 function TimelineStrip({
   tree, birthDate, totalYears, label, getLabel,
@@ -118,11 +121,11 @@ function TimelineStrip({
   label:      string
   getLabel:   (planet: string) => string
 }) {
-  const [zoom, setZoom]       = useState<ZoomLevel>('full')
+  const [zoom, setZoom]         = useState<ZoomLevel>('full')
   const [hoveredMD, setHovered] = useState<DashaTree[0] | null>(null)
 
-  const birth    = useMemo(() => new Date(birthDate), [birthDate])
-  const viewYears = zoom === 'full' ? totalYears : zoom === '20y' ? 20 : 5
+  const birth = useMemo(() => new Date(birthDate), [birthDate])
+  const viewYears = zoom === 'full' ? totalYears : zoom === '20y' ? 20 : zoom === '10y' ? 10 : zoom === '5y' ? 5 : 1
 
   const dateToYear = (d: Date | string) =>
     (new Date(d).getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
@@ -159,11 +162,11 @@ function TimelineStrip({
       <div className="flex items-center justify-between mb-2">
         <p className="text-[10px] uppercase tracking-wider font-semibold" style={{ color: 'var(--text-muted)' }}>{label}</p>
         <div className="flex gap-1">
-          {(['full', '20y', '5y'] as ZoomLevel[]).map(z => (
+          {(['full', '20y', '10y', '5y', '1y'] as ZoomLevel[]).map(z => (
             <button key={z} onClick={() => setZoom(z)}
               className="px-2 py-0.5 rounded text-[10px] font-semibold transition-colors"
               style={{ background: zoom === z ? '#7C3AED33' : 'var(--bg-hover)', color: zoom === z ? '#A78BFA' : 'var(--text-muted)' }}>
-              {z === 'full' ? 'Full' : z}
+              {z === 'full' ? 'All' : z}
             </button>
           ))}
         </div>
@@ -222,7 +225,7 @@ function TimelineStrip({
       </div>
 
       {/* AD band */}
-      <div className="relative h-6 rounded-lg overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+      <div className="relative h-6 rounded-lg overflow-hidden mb-0.5" style={{ background: 'var(--bg-primary)' }}>
         {activeMD?.antardashas.filter((ad: Antardasha) => {
           const s = dateToYear(ad.startDate)
           const e = dateToYear(ad.endDate)
@@ -233,16 +236,71 @@ function TimelineStrip({
           const w = e - s
           if (w <= 0) return null
           const color = PLANET_COLORS[ad.planet] ?? '#94a3b8'
+          const isActiveAD = todayYear >= dateToYear(ad.startDate) && todayYear < dateToYear(ad.endDate)
           return (
             <div key={ad.planet + String(ad.startDate)}
               className="absolute h-full flex items-center justify-center overflow-hidden"
-              style={{ left: `${s}%`, width: `${w}%`, background: color + '33', borderRight: '1px solid var(--bg-hover)' }}>
+              style={{
+                left: `${s}%`, width: `${w}%`,
+                background: color + (isActiveAD ? '44' : '22'),
+                borderRight: '1px solid var(--bg-hover)',
+                borderTop: isActiveAD ? `2px solid ${color}` : '2px solid transparent',
+              }}>
               {w > 5 && <span className="text-[8px] px-0.5 truncate" style={{ color }}>{getLabel(ad.planet)}</span>}
             </div>
           )
         })}
-        <div className="absolute top-0 bottom-0 w-0.5" style={{ left: `${todayPct}%`, background: '#EC489966' }} />
+        {/* AD change tick marks */}
+        {activeMD?.antardashas.map((ad: Antardasha) => {
+          const s = pct(dateToYear(ad.startDate))
+          if (s <= 0 || s >= 100) return null
+          return <div key={'tick-ad-' + String(ad.startDate)} className="absolute top-0 bottom-0 w-px opacity-40" style={{ left: `${s}%`, background: '#fff' }} />
+        })}
+        <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC489988' }} />
       </div>
+
+      {/* PD band — shown for 5y and 1y zoom */}
+      {(zoom === '5y' || zoom === '1y') && (() => {
+        const activeAD = activeMD?.antardashas.find((ad: Antardasha) =>
+          todayYear >= dateToYear(ad.startDate) && todayYear < dateToYear(ad.endDate)
+        ) ?? activeMD?.antardashas[0]
+        const pds = activeAD ? computeSubPeriods(activeAD) : []
+        const visiblePDs = pds.filter(pd => {
+          const s = dateToYear(pd.startDate)
+          const e = dateToYear(pd.endDate)
+          return e > timeRange.start && s < timeRange.end
+        })
+        return (
+          <div className="relative h-4 rounded-lg overflow-hidden" style={{ background: 'var(--bg-primary)' }}>
+            {visiblePDs.map(pd => {
+              const s = Math.max(0, pct(dateToYear(pd.startDate)))
+              const e = Math.min(100, pct(dateToYear(pd.endDate)))
+              const w = e - s
+              if (w <= 0) return null
+              const color = PLANET_COLORS[pd.planet] ?? '#94a3b8'
+              const isActivePD = todayYear >= dateToYear(pd.startDate) && todayYear < dateToYear(pd.endDate)
+              return (
+                <div key={pd.planet + String(pd.startDate)}
+                  className="absolute h-full flex items-center justify-center overflow-hidden"
+                  style={{
+                    left: `${s}%`, width: `${w}%`,
+                    background: color + (isActivePD ? '55' : '22'),
+                    borderRight: '1px solid var(--bg-hover)',
+                  }}>
+                  {w > 8 && <span className="text-[7px] px-0.5 truncate" style={{ color }}>{getLabel(pd.planet)}</span>}
+                </div>
+              )
+            })}
+            {/* PD change tick marks */}
+            {visiblePDs.map(pd => {
+              const s = pct(dateToYear(pd.startDate))
+              if (s <= 0 || s >= 100) return null
+              return <div key={'tick-pd-' + String(pd.startDate)} className="absolute top-0 bottom-0 w-px opacity-30" style={{ left: `${s}%`, background: '#fff' }} />
+            })}
+            <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC489988' }} />
+          </div>
+        )
+      })()}
     </div>
   )
 }
