@@ -299,15 +299,15 @@ export default function ShadbalaBars({ calc }: Props) {
 
   return (
     <div className="p-3 space-y-3">
-      <div className="flex gap-3">
-        {/* Left chart */}
-        <div className="flex-1 min-w-0 rounded-xl p-2.5" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+      <div className="flex flex-col gap-3">
+        {/* Top chart */}
+        <div className="rounded-xl p-2.5" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
           {sel(left, setLeft)}
           <BarChart type={left} data={data[left]} />
         </div>
 
-        {/* Right chart */}
-        <div className="flex-1 min-w-0 rounded-xl p-2.5" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+        {/* Bottom chart */}
+        <div className="rounded-xl p-2.5" style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
           {sel(right, setRight)}
           <BarChart type={right} data={data[right]} />
         </div>
