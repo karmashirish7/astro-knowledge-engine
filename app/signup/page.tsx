@@ -96,7 +96,7 @@ export default function SignupPage() {
         <div className="flex flex-col items-center mb-8">
           <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 overflow-hidden"
             style={{ background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
-            <Image src="/logo.png" alt="Akashvani Engine" width={80} height={80} className="object-contain" />
+            <Image src="/logo.png" alt="Akashvani Engine" width={80} height={80} className="object-contain" unoptimized />
           </div>
           <h1 className="text-2xl font-bold tracking-wide" style={{ color: 'var(--text-primary)' }}>
             AKASHVANI ENGINE

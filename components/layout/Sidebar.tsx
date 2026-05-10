@@ -53,11 +53,11 @@ export default function Sidebar() {
         <button
           onClick={() => setCollapsed(c => !c)}
           className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden transition-transform hover:scale-105 active:scale-95"
-          style={{ background: '#fff', boxShadow: '0 0 0 1.5px rgba(255,255,255,0.2)' }}
+          style={{ background: 'transparent', boxShadow: '0 0 0 1.5px rgba(255,255,255,0.2)' }}
           title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
-          <Image src="/logo.png" alt="Akashvani" width={32} height={32} className="object-contain" />
+          <Image src="/logo.png" alt="Akashvani" width={32} height={32} className="object-contain" unoptimized />
         </button>
 
         <AnimatePresence initial={false}>
