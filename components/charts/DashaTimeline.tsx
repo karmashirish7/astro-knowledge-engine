@@ -117,12 +117,7 @@ export default function DashaTimeline({ tree, birthDate, events = [] }: Props) {
         })}
 
         {/* Today marker */}
-        <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC4899' }}>
-          <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center" style={{ whiteSpace: 'nowrap' }}>
-            <div className="text-[9px] font-bold px-1.5 py-0.5 rounded-t" style={{ background: '#EC4899', color: '#fff' }}>Today</div>
-            <div className="text-[8px] font-semibold px-1 py-0.5 rounded-b" style={{ background: '#9D174D', color: '#fce7f3' }}>{todayLabel}</div>
-          </div>
-        </div>
+        <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC4899' }} />
       </div>
 
       {/* AD band (shown when MD hovered) */}
