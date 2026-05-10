@@ -5,8 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
-  ArrowLeft, Download, Plus, Save, Trash2, Tag, X, ChevronRight, ChevronDown,
-  Pencil, MapPin, Check, Menu, PanelLeftClose,
+  ArrowLeft, Download, Pencil, Check, Tag, X, Plus, Trash2, ChevronDown, MapPin,
 } from 'lucide-react'
 import DivisionalView from '@/components/chart/DivisionalView'
 import ObservationEntry from '@/components/charts/ObservationEntry'
@@ -15,7 +14,130 @@ import DashaView from '@/components/charts/DashaView'
 import { deserializeDashaTree, getCurrentDasha, deserializeYoginiTree } from '@/lib/astrology/dasha'
 import { searchCities, type City } from '@/lib/cities'
 
-// ── City Search (for edit modal) ───────────────────────────────────────────
+// ── Astrology helpers ──────────────────────────────────────────────────────
+
+const SIGN_NAMES_12 = [
+  'Aries','Taurus','Gemini','Cancer','Leo','Virgo',
+  'Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces',
+]
+const ORDINALS = ['1st','2nd','3rd','4th','5th','6th','7th','8th','9th','10th','11th','12th']
+const ordinal = (n: number) => ORDINALS[n - 1] ?? `${n}th`
+
+const SIGN_RULER: Record<number, string> = {
+  1:'Mars',2:'Venus',3:'Mercury',4:'Moon',5:'Sun',6:'Mercury',
+  7:'Venus',8:'Mars',9:'Jupiter',10:'Saturn',11:'Saturn',12:'Jupiter',
+}
+const PLANET_RULED_SIGNS: Record<string, number[]> = {
+  Sun:[5], Moon:[4], Mars:[1,8], Mercury:[3,6],
+  Jupiter:[9,12], Venus:[2,7], Saturn:[10,11], Rahu:[], Ketu:[],
+}
+const PLANET_ASPECTS: Record<string, number[]> = {
+  Sun:[7], Moon:[7], Mars:[4,7,8], Mercury:[7],
+  Jupiter:[5,7,9], Venus:[7], Saturn:[3,7,10], Rahu:[5,7,9], Ketu:[5,7,9],
+}
+
+function houseSign(houseNum: number, lagnaSign: number) {
+  const signNum = ((lagnaSign - 1 + houseNum - 1) % 12) + 1
+  return { sign: SIGN_NAMES_12[signNum - 1] ?? '', signNum }
+}
+function planetHouses(planet: string, lagnaSign: number): number[] {
+  return (PLANET_RULED_SIGNS[planet] ?? [])
+    .map(s => ((s - lagnaSign + 12) % 12) + 1)
+    .sort((a, b) => a - b)
+}
+function aspectingPlanets(target: number, houseNumbers: Record<string, number>): string[] {
+  return Object.entries(houseNumbers).flatMap(([planet, from]) => {
+    if (from === target) return []
+    const hits = (PLANET_ASPECTS[planet] ?? [7]).some(
+      off => ((from - 1 + off - 1) % 12) + 1 === target
+    )
+    return hits ? [planet] : []
+  })
+}
+
+function buildHouseSubtitle(houseNum: number, calc: any): string {
+  if (!calc?.houseNumbers) return ''
+  const lagna = calc.lagnaSign || 1
+  const { sign, signNum } = houseSign(houseNum, lagna)
+  const hn: Record<string, number> = calc.houseNumbers
+
+  const inHouse = Object.entries(hn).filter(([, h]) => h === houseNum).map(([p]) => p)
+  const aspecting = aspectingPlanets(houseNum, hn)
+
+  const dispositor = SIGN_RULER[signNum] ?? ''
+  const dispositorH = hn[dispositor]
+  const dispositorSign = dispositorH ? houseSign(dispositorH, lagna).sign : ''
+  const cotenants = dispositorH
+    ? Object.entries(hn).filter(([p, h]) => h === dispositorH && p !== dispositor).map(([p]) => p)
+    : []
+
+  const parts: string[] = [`${sign} sign`]
+
+  if (inHouse.length > 0) {
+    const descs = inHouse.map(p => {
+      const lords = planetHouses(p, lagna)
+      return lords.length ? `${p} (${lords.map(ordinal).join(' and ')} lord)` : p
+    })
+    parts.push(`with ${descs.join(' and ')}`)
+  }
+
+  if (aspecting.length > 0) parts.push(`aspected by ${aspecting.join(', ')}`)
+
+  if (dispositorH) {
+    const co = cotenants.length ? ` with ${cotenants.join(', ')}` : ' with no planets'
+    parts.push(`Dispositor: ${dispositor} in ${ordinal(dispositorH)} house (${dispositorSign})${co}`)
+  }
+
+  return parts.join(' · ')
+}
+
+function buildPlanetSubtitle(planet: string, calc: any): string {
+  if (!calc?.planets?.[planet]) return ''
+  const pos = calc.planets[planet]
+  const house = calc.houseNumbers?.[planet]
+  const lagna = calc.lagnaSign || 1
+  const lords = planetHouses(planet, lagna)
+  const parts = [`${pos.formatted}`]
+  if (house) parts.push(`H${house}`)
+  if (lords.length) parts.push(`Rules H${lords.join(', H')}`)
+  if (pos.nakshatra) parts.push(pos.nakshatra)
+  return parts.join(' · ')
+}
+
+// ── Section definitions ────────────────────────────────────────────────────
+
+const HOUSE_LABELS = Array.from({ length: 12 }, (_, i) => ({
+  id: `house${i + 1}`,
+  label: `H${i + 1}`,
+  type: 'house' as const,
+  houseNum: i + 1,
+}))
+
+const PLANET_LIST = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu']
+const PLANET_SECTIONS = PLANET_LIST.map(p => ({
+  id: `planet-${p}`,
+  label: p,
+  type: 'planet' as const,
+  planet: p,
+}))
+
+const ANALYSIS_SECTIONS = [
+  { id: 'panchang',     label: 'Panchang',          hint: 'Tithi, Vara, Nakshatra, Yoga, Karana…' },
+  { id: 'vargas',       label: 'Divisional Charts',  hint: 'D9 Navamsa, D10 Dasamsa, and other vargas' },
+  { id: 'dasha-viz',    label: 'Dasha Analysis',     hint: 'Vimshottari & Yogini · completion bars + timeline' },
+  { id: 'events',       label: 'Life Events',        hint: 'Key events with dates and correlations' },
+  { id: 'activations',  label: 'Activations',        hint: 'Transit / dasha activations' },
+  { id: 'observations', label: 'Observations',       hint: 'Track what is TRUE / FALSE / UNCLEAR' },
+  { id: 'pred-journal', label: 'Predictions',        hint: 'Record and verify predictions' },
+].map(s => ({ ...s, type: 'analysis' as const }))
+
+const ALL_STANDARD_IDS = new Set([
+  ...HOUSE_LABELS.map(h => h.id),
+  ...PLANET_SECTIONS.map(p => p.id),
+  ...ANALYSIS_SECTIONS.map(a => a.id),
+])
+
+// ── City Search ────────────────────────────────────────────────────────────
 
 function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
   const [query, setQuery]     = useState('')
@@ -23,57 +145,32 @@ function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
   const [open, setOpen]       = useState(false)
   const ref                   = useRef<HTMLDivElement>(null)
 
+  useEffect(() => { setResults(searchCities(query)); setOpen(query.length > 0) }, [query])
   useEffect(() => {
-    setResults(searchCities(query))
-    setOpen(query.length > 0)
-  }, [query])
-
-  useEffect(() => {
-    const handler = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
   }, [])
-
-  const pick = (city: City) => {
-    onSelect(city)
-    setQuery(city.name)
-    setOpen(false)
-  }
 
   return (
     <div ref={ref} className="relative">
-      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
-        City Search
-      </label>
+      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>City Search</label>
       <div className="relative">
         <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
-        <input
-          value={query}
-          onChange={e => setQuery(e.target.value)}
-          onFocus={() => query && setOpen(true)}
+        <input value={query} onChange={e => setQuery(e.target.value)} onFocus={() => query && setOpen(true)}
           placeholder="Type city name…"
           className="w-full pl-8 pr-3 py-2 rounded-lg text-sm outline-none"
-          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-        />
+          style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
       </div>
       {open && results.length > 0 && (
         <div className="absolute z-50 left-0 right-0 mt-1 rounded-xl overflow-hidden shadow-xl max-h-48 overflow-y-auto"
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {results.map((city, i) => (
-            <button key={i} onClick={() => pick(city)}
-              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 hover:bg-[#1E1E2A] transition-colors"
+            <button key={i} onClick={() => { onSelect(city); setQuery(city.name); setOpen(false) }}
+              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 hover:bg-[#1E1E2A]"
               style={{ borderColor: 'var(--border)' }}>
-              <div>
-                <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{city.name}</span>
-                {city.state && <span className="text-xs ml-1.5" style={{ color: 'var(--text-muted)' }}>{city.state},</span>}
-                <span className="text-xs ml-1" style={{ color: 'var(--text-muted)' }}>{city.country}</span>
-              </div>
-              <div className="text-right flex-shrink-0 ml-3">
-                <span className="text-[10px] font-mono" style={{ color: '#7C3AED' }}>{city.tz}</span>
-                <div className="text-[10px]" style={{ color: 'var(--text-muted)' }}>{city.lat.toFixed(2)}°, {city.lon.toFixed(2)}°</div>
-              </div>
+              <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{city.name}</span>
+              <span className="text-[10px] font-mono" style={{ color: '#7C3AED' }}>{city.tz}</span>
             </button>
           ))}
         </div>
@@ -82,73 +179,43 @@ function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
   )
 }
 
-// ── Edit Chart Modal ───────────────────────────────────────────────────────
+// ── Edit Modal ─────────────────────────────────────────────────────────────
 
-function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () => void; onSaved: (updated: any) => void }) {
+function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () => void; onSaved: (u: any) => void }) {
   const [form, setForm] = useState({
-    name:       chart.name       ?? '',
-    birthDate:  chart.birthDate  ?? '',
-    birthTime:  chart.birthTime  ?? '',
-    birthPlace: chart.birthPlace ?? '',
-    birthLat:   String(chart.birthLat ?? ''),
-    birthLon:   String(chart.birthLon ?? ''),
-    timezone:   chart.timezone   ?? '+05:30',
-    gender:     chart.gender     ?? '',
+    name: chart.name ?? '', birthDate: chart.birthDate ?? '', birthTime: chart.birthTime ?? '',
+    birthPlace: chart.birthPlace ?? '', birthLat: String(chart.birthLat ?? ''),
+    birthLon: String(chart.birthLon ?? ''), timezone: chart.timezone ?? '+05:30', gender: chart.gender ?? '',
   })
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
-
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
-
-  const handleCitySelect = (city: City) => {
-    setForm(f => ({
-      ...f,
-      birthPlace: `${city.name}${city.state ? ', ' + city.state : ''}, ${city.country}`,
-      birthLat:   String(city.lat),
-      birthLon:   String(city.lon),
-      timezone:   city.tz,
-    }))
-  }
 
   const save = async () => {
     if (!form.name.trim()) { setError('Name is required'); return }
-    setSaving(true)
-    setError('')
+    setSaving(true); setError('')
     try {
       const res = await fetch(`/api/chart/${chart.id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name:       form.name.trim(),
-          birthDate:  form.birthDate  || undefined,
-          birthTime:  form.birthTime  || undefined,
-          birthPlace: form.birthPlace || undefined,
-          birthLat:   form.birthLat   ? parseFloat(form.birthLat)  : undefined,
-          birthLon:   form.birthLon   ? parseFloat(form.birthLon)  : undefined,
-          timezone:   form.timezone   || undefined,
-          gender:     form.gender     || undefined,
+          name: form.name.trim(), birthDate: form.birthDate || undefined, birthTime: form.birthTime || undefined,
+          birthPlace: form.birthPlace || undefined, birthLat: form.birthLat ? parseFloat(form.birthLat) : undefined,
+          birthLon: form.birthLon ? parseFloat(form.birthLon) : undefined, timezone: form.timezone || undefined,
+          gender: form.gender || undefined,
         }),
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Save failed'); setSaving(false); return }
       onSaved(data)
-    } catch {
-      setError('Save failed')
-      setSaving(false)
-    }
+    } catch { setError('Save failed'); setSaving(false) }
   }
 
-  const field = (label: string, key: string, type = 'text', placeholder = '') => (
+  const inp = (label: string, key: string, type = 'text', ph = '') => (
     <div>
       <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
-      <input
-        type={type}
-        value={(form as any)[key]}
-        onChange={e => set(key, e.target.value)}
-        placeholder={placeholder}
+      <input type={type} value={(form as any)[key]} onChange={e => set(key, e.target.value)} placeholder={ph}
         className="w-full px-3 py-2 rounded-lg text-sm outline-none"
-        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-      />
+        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
     </div>
   )
 
@@ -157,63 +224,32 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
       <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
         className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', maxHeight: '90vh' }}>
-
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0"
-          style={{ borderColor: 'var(--border)' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Chart</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A] transition-colors">
-            <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-          </button>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
         </div>
-
-        {/* Form */}
         <div className="overflow-y-auto p-5 space-y-4">
-          {field('Name', 'name', 'text', 'Full name')}
-
-          <div className="grid grid-cols-2 gap-3">
-            {field('Birth Date', 'birthDate', 'date')}
-            {field('Birth Time', 'birthTime', 'time')}
-          </div>
-
-          <CitySearch onSelect={handleCitySelect} />
-
-          {field('Birth Place', 'birthPlace', 'text', 'City, Country')}
-
-          <div className="grid grid-cols-2 gap-3">
-            {field('Latitude', 'birthLat', 'text', '28.6139')}
-            {field('Longitude', 'birthLon', 'text', '77.2090')}
-          </div>
-
-          {field('Timezone', 'timezone', 'text', '+05:30')}
-
+          {inp('Name', 'name', 'text', 'Full name')}
+          <div className="grid grid-cols-2 gap-3">{inp('Birth Date', 'birthDate', 'date')}{inp('Birth Time', 'birthTime', 'time')}</div>
+          <CitySearch onSelect={city => setForm(f => ({ ...f, birthPlace: `${city.name}, ${city.country}`, birthLat: String(city.lat), birthLon: String(city.lon), timezone: city.tz }))} />
+          {inp('Birth Place', 'birthPlace', 'text', 'City, Country')}
+          <div className="grid grid-cols-2 gap-3">{inp('Latitude', 'birthLat', 'text', '28.6139')}{inp('Longitude', 'birthLon', 'text', '77.2090')}</div>
+          {inp('Timezone', 'timezone', 'text', '+05:30')}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Gender</label>
-            <select
-              value={form.gender}
-              onChange={e => set('gender', e.target.value)}
+            <select value={form.gender} onChange={e => set('gender', e.target.value)}
               className="w-full px-3 py-2 rounded-lg text-sm outline-none"
               style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
-              <option value="">Not specified</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-              <option value="other">Other</option>
+              <option value="">Not specified</option><option value="male">Male</option>
+              <option value="female">Female</option><option value="other">Other</option>
             </select>
           </div>
-
           {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
         </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t flex-shrink-0"
-          style={{ borderColor: 'var(--border)' }}>
-          <button onClick={onClose}
-            className="px-4 py-2 rounded-lg text-xs font-medium transition-colors"
-            style={{ color: 'var(--text-muted)', background: 'var(--bg-hover)' }}>
-            Cancel
-          </button>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium" style={{ color: 'var(--text-muted)', background: 'var(--bg-hover)' }}>Cancel</button>
           <button onClick={save} disabled={saving}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
             style={{ background: '#7C3AED', color: 'white' }}>
             {saving ? 'Saving…' : <><Check className="w-3.5 h-3.5" /> Save Changes</>}
           </button>
@@ -223,43 +259,170 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
   )
 }
 
-// ── Section definitions ────────────────────────────────────────────────────
+// ── Section Dropdown ───────────────────────────────────────────────────────
 
-const HOUSE_SANSKRIT = [
-  'Lagna','Dhana','Sahaja','Sukha','Putra','Ripu',
-  'Yuvati','Randhra','Dharma','Karma','Labha','Vyaya',
-]
-const HOUSE_SIGNIFICATIONS = [
-  'Self, Body, Personality','Wealth, Family, Speech','Siblings, Courage, Communication',
-  'Home, Mother, Happiness','Children, Intelligence, Creativity','Enemies, Health, Service',
-  'Marriage, Partnerships','Longevity, Occult, Transformation','Religion, Philosophy, Higher Learning',
-  'Career, Fame, Father','Gains, Income, Network','Loss, Liberation, Foreign',
-]
+function SectionDropdown({
+  active, customSections, notes, onSelect, onDeleteCustom, onAddCustom,
+}: {
+  active: string
+  customSections: string[]
+  notes: Record<string, string>
+  onSelect: (id: string) => void
+  onDeleteCustom: (s: string) => void
+  onAddCustom: (name: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const [newName, setNewName] = useState('')
+  const [adding, setAdding] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
 
-const STANDARD_SECTIONS = [
-  { id: 'panchang',    icon: '◷', label: 'Panchang',        hint: 'Tithi, Vara, Nakshatra, Yoga, Karana, Ayana…' },
-  ...Array.from({ length: 12 }, (_, i) => ({
-    id: `house${i + 1}`,
-    icon: String(i + 1),
-    label: `H${i + 1} · ${HOUSE_SANSKRIT[i]}`,
-    hint: HOUSE_SIGNIFICATIONS[i],
-  })),
-  { id: 'vargas',       icon: '◈', label: 'Divisional Charts', hint: 'D9 Navamsa, D10 Dasamsa, and 13 other vargas' },
-  { id: 'dasha-viz',    icon: '◎', label: 'Dasha Analysis',   hint: 'Vimshottari & Yogini · completion bars + timeline' },
-  { id: 'events',       icon: '◉', label: 'Life Events',      hint: 'Key events with dates and correlations…' },
-  { id: 'activations',  icon: '⚡', label: 'Activations',     hint: 'Transit / dasha activations of chart factors…' },
-  { id: 'observations', icon: '🔬', label: 'Observations',    hint: 'Track what is TRUE / FALSE / UNCLEAR about this chart' },
-  { id: 'pred-journal', icon: '✦', label: 'Predictions',      hint: 'Record and verify predictions' },
-]
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
 
-// ── Debounced save hook ────────────────────────────────────────────────────
+  const pick = (id: string) => { onSelect(id); setOpen(false) }
+
+  // Derive current label
+  const houseEntry   = HOUSE_LABELS.find(h => h.id === active)
+  const planetEntry  = PLANET_SECTIONS.find(p => p.id === active)
+  const analysisEntry = ANALYSIS_SECTIONS.find(a => a.id === active)
+  const currentLabel = houseEntry?.label ?? planetEntry?.label ?? analysisEntry?.label ?? active
+
+  const hasNote = (id: string) => !!(notes[id]?.trim())
+
+  const btnStyle = (id: string) => ({
+    background: active === id ? 'rgba(124,58,237,0.15)' : 'transparent',
+    color: active === id ? '#A78BFA' : 'var(--text-secondary)',
+    borderLeft: active === id ? '2px solid #7C3AED' : '2px solid transparent',
+  })
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Trigger */}
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors"
+        style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)' }}>
+        {currentLabel}
+        <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
+      </button>
+
+      {/* Dropdown panel */}
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+            transition={{ duration: 0.12 }}
+            className="absolute top-full mt-1.5 left-0 z-50 rounded-xl overflow-hidden overflow-y-auto shadow-2xl"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', width: 260, maxHeight: 480 }}>
+
+            {/* Houses */}
+            <div className="px-3 pt-3 pb-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Houses</p>
+              <div className="grid grid-cols-6 gap-1">
+                {HOUSE_LABELS.map(h => (
+                  <button key={h.id} onClick={() => pick(h.id)}
+                    className="py-1.5 rounded-lg text-xs font-semibold transition-colors relative"
+                    style={btnStyle(h.id)}>
+                    {h.label}
+                    {hasNote(h.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mx-3 my-2 border-t" style={{ borderColor: 'var(--border)' }} />
+
+            {/* Planets */}
+            <div className="px-3 pb-1">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Planets</p>
+              <div className="grid grid-cols-3 gap-1">
+                {PLANET_SECTIONS.map(p => (
+                  <button key={p.id} onClick={() => pick(p.id)}
+                    className="py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors text-left relative"
+                    style={btnStyle(p.id)}>
+                    {p.label}
+                    {hasNote(p.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="mx-3 my-2 border-t" style={{ borderColor: 'var(--border)' }} />
+
+            {/* Analysis */}
+            <div className="px-3 pb-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Analysis</p>
+              {ANALYSIS_SECTIONS.map(a => (
+                <button key={a.id} onClick={() => pick(a.id)}
+                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left"
+                  style={btnStyle(a.id)}>
+                  {a.label}
+                  {hasNote(a.id) && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom sections */}
+            {customSections.length > 0 && (
+              <>
+                <div className="mx-3 my-1 border-t" style={{ borderColor: 'var(--border)' }} />
+                <div className="px-3 pb-2">
+                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Custom</p>
+                  {customSections.map(s => (
+                    <div key={s} className="flex items-center group">
+                      <button onClick={() => pick(s)}
+                        className="flex-1 flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left"
+                        style={btnStyle(s)}>
+                        {s}
+                        {hasNote(s) && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#7C3AED' }} />}
+                      </button>
+                      <button onClick={() => onDeleteCustom(s)} className="opacity-0 group-hover:opacity-100 p-1 rounded ml-1">
+                        <Trash2 className="w-3 h-3" style={{ color: '#EF4444' }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {/* Add custom */}
+            <div className="px-3 pb-3 border-t" style={{ borderColor: 'var(--border)' }}>
+              {adding ? (
+                <div className="flex gap-1 mt-2">
+                  <input autoFocus value={newName} onChange={e => setNewName(e.target.value)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' && newName.trim()) { onAddCustom(newName.trim()); setNewName(''); setAdding(false); setOpen(false) }
+                      if (e.key === 'Escape') { setAdding(false); setNewName('') }
+                    }}
+                    placeholder="Section name…"
+                    className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
+                    style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+                  <button onClick={() => { if (newName.trim()) { onAddCustom(newName.trim()); setNewName(''); setAdding(false); setOpen(false) } }}
+                    className="px-2 py-1 rounded-md text-xs" style={{ background: '#7C3AED', color: 'white' }}>+</button>
+                </div>
+              ) : (
+                <button onClick={() => setAdding(true)}
+                  className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-xs transition-colors"
+                  style={{ color: 'var(--text-muted)' }}>
+                  <Plus className="w-3.5 h-3.5" /> Add section
+                </button>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+// ── Debounce ───────────────────────────────────────────────────────────────
 
 function useDebounce<T>(value: T, delay: number): T {
   const [dv, setDv] = useState(value)
-  useEffect(() => {
-    const t = setTimeout(() => setDv(value), delay)
-    return () => clearTimeout(t)
-  }, [value, delay])
+  useEffect(() => { const t = setTimeout(() => setDv(value), delay); return () => clearTimeout(t) }, [value, delay])
   return dv
 }
 
@@ -269,27 +432,21 @@ export default function ChartDetailPage() {
   const { id } = useParams() as { id: string }
   const router = useRouter()
 
-  const [chart, setChart]           = useState<any | null>(null)
-  const [notes, setNotes]           = useState<Record<string, string>>({})    // section → content
-  const [activeSection, setSection] = useState('panchang')
+  const [chart, setChart]           = useState<any>(null)
+  const [notes, setNotes]           = useState<Record<string, string>>({})
+  const [activeSection, setSection] = useState('house1')
   const [customSections, setCustom] = useState<string[]>([])
-  const [newSectionName, setNewName]= useState('')
-  const [addingSection, setAdding]  = useState(false)
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [editOpen, setEditOpen]     = useState(false)
-  const [leftOpen, setLeftOpen]     = useState(true)
   const [tagInput, setTagInput]     = useState('')
   const [kwInput, setKwInput]       = useState('')
   const [tags, setTags]             = useState<string[]>([])
   const [keywords, setKeywords]     = useState<string[]>([])
 
-  // Auto-save current section note
-  const currentContent = notes[activeSection] ?? ''
-  const debouncedContent = useDebounce(currentContent, 1200)
-  const lastSaved = useRef<string | null>(null)
-
-  // ── Load chart ────────────────────────────────────────────────────────
+  const currentContent    = notes[activeSection] ?? ''
+  const debouncedContent  = useDebounce(currentContent, 1200)
+  const lastSaved         = useRef<string | null>(null)
 
   const loadChart = useCallback(async () => {
     const data = await fetch(`/api/chart/${id}`).then(r => r.json())
@@ -297,14 +454,11 @@ export default function ChartDetailPage() {
     setChart(data)
     setTags((() => { try { return JSON.parse(data.tagsList || '[]') } catch { return [] } })())
     setKeywords((() => { try { return JSON.parse(data.keywords || '[]') } catch { return [] } })())
-
-    // Build notes map from chartNotes
     const noteMap: Record<string, string> = {}
-    const stdIds = new Set(STANDARD_SECTIONS.map(s => s.id))
     const customs: string[] = []
     for (const n of (data.chartNotes || [])) {
       noteMap[n.section] = n.content
-      if (!stdIds.has(n.section)) customs.push(n.section)
+      if (!ALL_STANDARD_IDS.has(n.section)) customs.push(n.section)
     }
     setNotes(noteMap)
     setCustom(customs)
@@ -312,72 +466,49 @@ export default function ChartDetailPage() {
 
   useEffect(() => { loadChart() }, [loadChart])
 
-  // ── Auto-save note on debounce ─────────────────────────────────────────
-
   useEffect(() => {
-    if (!chart) return
-    if (debouncedContent === lastSaved.current) return
+    if (!chart || debouncedContent === lastSaved.current) return
     lastSaved.current = debouncedContent
     setSaving(true)
     fetch(`/api/chart/${id}/notes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ section: activeSection, content: debouncedContent }),
     }).then(() => { setSaving(false); setSaved(true); setTimeout(() => setSaved(false), 1500) })
       .catch(() => setSaving(false))
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedContent])
 
-  // ── Tag & keyword helpers ──────────────────────────────────────────────
-
   const addTag = async (tag: string, type: 'tag' | 'kw') => {
     if (!tag.trim()) return
     if (type === 'tag') {
-      const next = [...tags, tag.trim()]
-      setTags(next)
-      setTagInput('')
+      const next = [...tags, tag.trim()]; setTags(next); setTagInput('')
       await fetch(`/api/chart/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tagsList: next }) })
     } else {
-      const next = [...keywords, tag.trim()]
-      setKeywords(next)
-      setKwInput('')
+      const next = [...keywords, tag.trim()]; setKeywords(next); setKwInput('')
       await fetch(`/api/chart/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keywords: next }) })
     }
   }
-
   const removeTag = async (tag: string, type: 'tag' | 'kw') => {
     if (type === 'tag') {
-      const next = tags.filter(t => t !== tag)
-      setTags(next)
+      const next = tags.filter(t => t !== tag); setTags(next)
       await fetch(`/api/chart/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ tagsList: next }) })
     } else {
-      const next = keywords.filter(k => k !== tag)
-      setKeywords(next)
+      const next = keywords.filter(k => k !== tag); setKeywords(next)
       await fetch(`/api/chart/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ keywords: next }) })
     }
   }
 
-  // ── Custom section ─────────────────────────────────────────────────────
-
-  const addCustomSection = () => {
-    const name = newSectionName.trim()
+  const addCustomSection = (name: string) => {
     if (!name || customSections.includes(name)) return
     setCustom(prev => [...prev, name])
-    setNewName('')
-    setAdding(false)
     setSection(name)
   }
-
   const deleteCustomSection = async (section: string) => {
     if (!confirm(`Delete section "${section}"?`)) return
     setCustom(prev => prev.filter(s => s !== section))
     setNotes(prev => { const n = { ...prev }; delete n[section]; return n })
-    if (activeSection === section) setSection('panchang')
-    await fetch(`/api/chart/${id}/notes`, {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ section }),
-    })
+    if (activeSection === section) setSection('house1')
+    await fetch(`/api/chart/${id}/notes`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section }) })
   }
 
   if (!chart) {
@@ -388,12 +519,12 @@ export default function ChartDetailPage() {
     )
   }
 
-  const calc = (() => { try { return JSON.parse(chart.calculatedPositions || '{}') } catch { return {} } })()
-  const hasPrecise = !!(calc && calc.planets)
-  const planets = (calc?.houseNumbers ?? {})
-  const lagna = parseInt(chart.lagna) || 1
+  const calc       = (() => { try { return JSON.parse(chart.calculatedPositions || '{}') } catch { return {} } })()
+  const hasPrecise = !!(calc?.planets)
+  const planets    = calc?.houseNumbers ?? {}
+  const lagna      = parseInt(chart.lagna) || 1
 
-  const dashaTree = (() => {
+  const dashaTree  = (() => {
     try {
       const pd = chart.planetaryData
       if (!pd?.dashaJson || pd.dashaJson === '{}' || pd.dashaJson === '[]') return null
@@ -404,7 +535,6 @@ export default function ChartDetailPage() {
   const currentDashaSummary = currentDasha
     ? { mahadasha: currentDasha.mahadasha.planet, antardasha: currentDasha.antardasha.planet }
     : null
-
   const yoginiTree = (() => {
     try {
       const pd = chart.planetaryData
@@ -413,12 +543,39 @@ export default function ChartDetailPage() {
     } catch { return null }
   })()
 
-  const allSections = [...STANDARD_SECTIONS, ...customSections.map(s => ({ id: s, icon: '◈', label: s, hint: '' }))]
-  const currentSection = allSections.find(s => s.id === activeSection) ?? allSections[0]
+  // Compute subtitle for current section
+  const houseEntry  = HOUSE_LABELS.find(h => h.id === activeSection)
+  const planetEntry = PLANET_SECTIONS.find(p => p.id === activeSection)
+  const analysisEntry = ANALYSIS_SECTIONS.find(a => a.id === activeSection)
+
+  const subtitle = houseEntry && hasPrecise
+    ? buildHouseSubtitle(houseEntry.houseNum, calc)
+    : planetEntry && hasPrecise
+    ? buildPlanetSubtitle(planetEntry.planet, calc)
+    : analysisEntry?.hint ?? ''
+
+  const sectionLabel = houseEntry?.label ?? planetEntry?.label ?? analysisEntry?.label ?? activeSection
+
+  // Content renderer
+  const renderContent = () => {
+    if (activeSection === 'observations')  return <ObservationEntry chartId={id} />
+    if (activeSection === 'pred-journal')  return <PredictionEntry chartId={id} currentDasha={currentDashaSummary} />
+    if (activeSection === 'dasha-viz')     return <DashaView vimshottariTree={dashaTree} yoginiTree={yoginiTree} birthDate={chart.birthDate} />
+    return (
+      <textarea
+        value={notes[activeSection] ?? ''}
+        onChange={e => setNotes(prev => ({ ...prev, [activeSection]: e.target.value }))}
+        placeholder={`Notes for ${sectionLabel}…\n\nWrite anything — dictums, observations, predictions, event dates, correlations…`}
+        className="w-full h-full resize-none outline-none text-sm leading-relaxed"
+        style={{ background: 'transparent', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono), monospace', minHeight: 200 }}
+      />
+    )
+  }
 
   return (
     <div className="h-screen flex flex-col" style={{ background: 'var(--bg-primary)' }}>
-      {/* ── Top bar ─────────────────────────────────────────────────── */}
+
+      {/* Top bar */}
       <div className="flex items-center gap-3 px-5 py-3 border-b flex-shrink-0"
         style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
         <Link href="/chart">
@@ -426,13 +583,6 @@ export default function ChartDetailPage() {
             <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
         </Link>
-        <button onClick={() => setLeftOpen(o => !o)}
-          className="p-1.5 rounded-lg hover:bg-[#1E1E2A] transition-colors"
-          title={leftOpen ? 'Collapse sections' : 'Expand sections'}>
-          {leftOpen
-            ? <PanelLeftClose className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-            : <Menu className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
-        </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{chart.name}</h1>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -460,156 +610,52 @@ export default function ChartDetailPage() {
         </div>
       </div>
 
+      {/* Body */}
       <div className="flex flex-1 overflow-hidden">
-        {/* ── Left: section nav ──────────────────────────────────────── */}
-        <AnimatePresence initial={false}>
-        {leftOpen && (
-        <motion.div
-          key="left-panel"
-          initial={{ width: 0, opacity: 0 }}
-          animate={{ width: 208, opacity: 1 }}
-          exit={{ width: 0, opacity: 0 }}
-          transition={{ duration: 0.2, ease: 'easeInOut' }}
-          className="flex-shrink-0 flex flex-col border-r overflow-y-auto overflow-x-hidden"
-          style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
 
-          {/* Lagna / Moon summary strip */}
-          {hasPrecise && (
-            <div className="px-3 py-2 border-b flex-shrink-0 space-y-0.5" style={{ borderColor: 'var(--border)' }}>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Lagna: {calc.lagna?.formatted}</p>
-              <p className="text-[10px]" style={{ color: 'var(--text-muted)' }}>Moon: {calc.planets?.Moon?.formatted}</p>
-            </div>
-          )}
-
-          {/* Section list */}
-          <div className="flex-1 p-1.5 space-y-0.5">
-            {STANDARD_SECTIONS.map(sec => (
-              <button key={sec.id} onClick={() => setSection(sec.id)}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left"
-                style={{
-                  background: activeSection === sec.id ? 'rgba(124,58,237,0.14)' : 'transparent',
-                  color: activeSection === sec.id ? '#A78BFA' : 'var(--text-secondary)',
-                  borderLeft: activeSection === sec.id ? '2px solid #7C3AED' : '2px solid transparent',
-                }}>
-                <span className="w-4 text-center flex-shrink-0 text-sm">{sec.icon}</span>
-                <span className="truncate">{sec.label}</span>
-                {notes[sec.id] && <span className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />}
-              </button>
-            ))}
-
-            {/* Custom sections */}
-            {customSections.map(sec => (
-              <div key={sec} className="flex items-center group">
-                <button onClick={() => setSection(sec)}
-                  className="flex-1 flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors text-left"
-                  style={{
-                    background: activeSection === sec ? 'rgba(124,58,237,0.14)' : 'transparent',
-                    color: activeSection === sec ? '#A78BFA' : 'var(--text-secondary)',
-                    borderLeft: activeSection === sec ? '2px solid #7C3AED' : '2px solid transparent',
-                  }}>
-                  <span className="w-4 text-center flex-shrink-0 text-sm">◈</span>
-                  <span className="truncate">{sec}</span>
-                  {notes[sec] && <span className="ml-auto w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />}
-                </button>
-                <button onClick={() => deleteCustomSection(sec)}
-                  className="opacity-0 group-hover:opacity-100 p-1 rounded transition-opacity">
-                  <Trash2 className="w-3 h-3" style={{ color: '#EF4444' }} />
-                </button>
-              </div>
-            ))}
-
-            {/* Add section */}
-            {addingSection ? (
-              <div className="flex gap-1 p-1">
-                <input
-                  autoFocus
-                  value={newSectionName}
-                  onChange={e => setNewName(e.target.value)}
-                  onKeyDown={e => { if (e.key === 'Enter') addCustomSection(); if (e.key === 'Escape') { setAdding(false); setNewName('') } }}
-                  placeholder="Section name…"
-                  className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
-                  style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-                />
-                <button onClick={addCustomSection} className="px-2 py-1 rounded-md text-xs" style={{ background: '#7C3AED', color: 'white' }}>+</button>
-              </div>
-            ) : (
-              <button onClick={() => setAdding(true)}
-                className="w-full flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs transition-colors"
-                style={{ color: 'var(--text-muted)' }}>
-                <Plus className="w-3.5 h-3.5" /> Add Section
-              </button>
-            )}
-          </div>
-        </motion.div>
-        )}
-        </AnimatePresence>
-
-        {/* ── Center: charts + note editor ─────────────────────────── */}
+        {/* Center: chart + section */}
         <div className="flex-1 flex flex-col overflow-hidden">
 
-          {/* Always-visible two-chart view */}
+          {/* Chart grid */}
           <div className="flex-shrink-0 border-b p-4" style={{ borderColor: 'var(--border)' }}>
             <DivisionalView
               calc={calc}
               d1Lagna={lagna}
               d1Planets={planets}
               d1Degrees={hasPrecise ? Object.fromEntries(
-                Object.entries(calc.planets as Record<string, any>)
-                  .map(([k, v]: [string, any]) => [k, v.degrees as number])
+                Object.entries(calc.planets as Record<string, any>).map(([k, v]: [string, any]) => [k, v.degrees as number])
               ) : {}}
             />
           </div>
 
-          {/* Section header */}
-          <div className="flex items-center gap-3 px-6 py-3 border-b flex-shrink-0"
+          {/* Section selector bar */}
+          <div className="flex items-start gap-3 px-4 py-3 border-b flex-shrink-0"
             style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
-            <span className="text-xl">{currentSection.icon}</span>
-            <div>
-              <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>{currentSection.label}</h2>
-              {currentSection.hint && (
-                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{currentSection.hint}</p>
-              )}
-            </div>
+            <SectionDropdown
+              active={activeSection}
+              customSections={customSections}
+              notes={notes}
+              onSelect={setSection}
+              onDeleteCustom={deleteCustomSection}
+              onAddCustom={addCustomSection}
+            />
+            {subtitle && (
+              <p className="text-xs leading-relaxed flex-1 pt-1.5" style={{ color: 'var(--text-muted)' }}>
+                {subtitle}
+              </p>
+            )}
           </div>
 
-          {/* Section content */}
+          {/* Content */}
           <div className="flex-1 overflow-y-auto p-4">
-            {activeSection === 'observations' ? (
-              <ObservationEntry chartId={id} />
-            ) : activeSection === 'pred-journal' ? (
-              <PredictionEntry chartId={id} currentDasha={currentDashaSummary} />
-            ) : activeSection === 'dasha-viz' ? (
-              <DashaView
-                vimshottariTree={dashaTree}
-                yoginiTree={yoginiTree}
-                birthDate={chart.birthDate}
-              />
-            ) : (
-              <textarea
-                value={notes[activeSection] ?? ''}
-                onChange={e => setNotes(prev => ({ ...prev, [activeSection]: e.target.value }))}
-                placeholder={
-                  activeSection === 'vargas'
-                    ? 'Notes on divisional charts…\n\nRecord observations about navamsa, dasamsa, and other vargas…'
-                    : `Notes for ${currentSection.label}…\n\nWrite anything — dictums, observations, predictions, event dates, correlations…`
-                }
-                className="w-full h-full resize-none outline-none text-sm leading-relaxed"
-                style={{
-                  background: 'transparent',
-                  color: 'var(--text-primary)',
-                  fontFamily: 'var(--font-geist-mono), monospace',
-                  minHeight: '200px',
-                }}
-              />
-            )}
+            {renderContent()}
           </div>
         </div>
 
-        {/* ── Right: positions + tags ────────────────────────────────── */}
+        {/* Right panel: positions + tags */}
         <div className="w-64 flex-shrink-0 border-l flex flex-col overflow-y-auto"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
 
-          {/* Positions table */}
           {hasPrecise && (
             <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <p className="text-xs font-semibold uppercase tracking-wider mb-3" style={{ color: 'var(--text-muted)' }}>
@@ -621,10 +667,13 @@ export default function ChartDetailPage() {
                   <span style={{ color: 'var(--text-secondary)' }}>{calc.lagna?.formatted}</span>
                 </div>
                 {Object.entries(calc.planets as Record<string, any>).map(([graha, pos]: [string, any]) => (
-                  <div key={graha} className="flex justify-between text-xs">
-                    <span className="font-medium" style={{ color: 'var(--text-secondary)' }}>{graha}</span>
+                  <button key={graha}
+                    onClick={() => setSection(`planet-${graha}`)}
+                    className="w-full flex justify-between text-xs rounded px-1 py-0.5 -mx-1 transition-colors hover:bg-white/5"
+                    style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'inherit' }}>
+                    <span className="font-medium" style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'var(--text-secondary)' }}>{graha}</span>
                     <span style={{ color: 'var(--text-muted)' }}>{pos.formatted} <span style={{ color: '#7C3AED' }}>H{calc.houseNumbers?.[graha]}</span></span>
-                  </div>
+                  </button>
                 ))}
                 <p className="text-[10px] mt-2 pt-2 border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
                   Ayanamsa: {parseFloat(calc.ayanamsa || 0).toFixed(4)}° · Mean nodes · Geocentric
@@ -643,19 +692,15 @@ export default function ChartDetailPage() {
               {tags.map(t => (
                 <span key={t} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
                   style={{ background: '#10B98120', color: '#10B981', border: '1px solid #10B98133' }}>
-                  {t}
-                  <button onClick={() => removeTag(t, 'tag')}><X className="w-2.5 h-2.5" /></button>
+                  {t}<button onClick={() => removeTag(t, 'tag')}><X className="w-2.5 h-2.5" /></button>
                 </span>
               ))}
             </div>
-            <input
-              value={tagInput}
-              onChange={e => setTagInput(e.target.value)}
+            <input value={tagInput} onChange={e => setTagInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addTag(tagInput, 'tag') }}
               placeholder="Add tag + Enter"
               className="w-full px-2.5 py-1.5 rounded-lg text-xs outline-none"
-              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-            />
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
           </div>
 
           {/* Keywords */}
@@ -668,32 +713,22 @@ export default function ChartDetailPage() {
               {keywords.map(k => (
                 <span key={k} className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full"
                   style={{ background: '#7C3AED20', color: '#A78BFA', border: '1px solid #7C3AED33' }}>
-                  {k}
-                  <button onClick={() => removeTag(k, 'kw')}><X className="w-2.5 h-2.5" /></button>
+                  {k}<button onClick={() => removeTag(k, 'kw')}><X className="w-2.5 h-2.5" /></button>
                 </span>
               ))}
             </div>
-            <input
-              value={kwInput}
-              onChange={e => setKwInput(e.target.value)}
+            <input value={kwInput} onChange={e => setKwInput(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') addTag(kwInput, 'kw') }}
               placeholder="Add keyword + Enter"
               className="w-full px-2.5 py-1.5 rounded-lg text-xs outline-none"
-              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
-            />
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
           </div>
         </div>
       </div>
 
       {editOpen && (
-        <EditChartModal
-          chart={{ ...chart, id }}
-          onClose={() => setEditOpen(false)}
-          onSaved={updated => {
-            setChart(updated)
-            setEditOpen(false)
-          }}
-        />
+        <EditChartModal chart={{ ...chart, id }} onClose={() => setEditOpen(false)}
+          onSaved={updated => { setChart(updated); setEditOpen(false) }} />
       )}
     </div>
   )
