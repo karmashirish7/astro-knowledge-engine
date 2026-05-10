@@ -50,7 +50,9 @@ export default function DashaTimeline({ tree, birthDate, events = [] }: Props) {
   const yearToDate = (yearOffset: number) => new Date(birth.getTime() + yearOffset * 365.25 * 24 * 60 * 60 * 1000)
   const dateToYear = (d: Date | string) => (new Date(d).getTime() - birth.getTime()) / (365.25 * 24 * 60 * 60 * 1000)
 
-  const todayPct = Math.max(0, Math.min(100, pct(dateToYear(new Date()))))
+  const todayNow   = new Date()
+  const todayPct   = Math.max(0, Math.min(100, pct(dateToYear(todayNow))))
+  const todayLabel = todayNow.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   const visibleMDs = tree.filter(md => {
     const s = dateToYear(md.startDate)
@@ -116,8 +118,10 @@ export default function DashaTimeline({ tree, birthDate, events = [] }: Props) {
 
         {/* Today marker */}
         <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC4899' }}>
-          <div className="absolute -top-0.5 -translate-x-1/2 text-[10px] font-bold px-1 rounded"
-            style={{ background: '#EC4899', color: '#fff', whiteSpace: 'nowrap' }}>today</div>
+          <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center" style={{ whiteSpace: 'nowrap' }}>
+            <div className="text-[9px] font-bold px-1.5 py-0.5 rounded-t" style={{ background: '#EC4899', color: '#fff' }}>Today</div>
+            <div className="text-[8px] font-semibold px-1 py-0.5 rounded-b" style={{ background: '#9D174D', color: '#fce7f3' }}>{todayLabel}</div>
+          </div>
         </div>
       </div>
 

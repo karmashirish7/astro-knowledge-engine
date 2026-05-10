@@ -63,8 +63,8 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
             <select
               value={divN}
               onChange={e => setDivN(Number(e.target.value))}
-              className="text-xs px-2 py-0.5 rounded outline-none cursor-pointer"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+              className="text-sm font-semibold px-3 py-1.5 rounded-lg outline-none cursor-pointer"
+              style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 160 }}>
               {VARGAS.map(v => (
                 <option key={v.n} value={v.n}>{v.abbr} · {v.name}</option>
               ))}

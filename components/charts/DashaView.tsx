@@ -142,8 +142,10 @@ function TimelineStrip({
   const pct = (yr: number) =>
     ((yr - timeRange.start) / (timeRange.end - timeRange.start)) * 100
 
-  const todayPct  = Math.max(0, Math.min(100, pct(dateToYear(new Date()))))
-  const todayYear = dateToYear(new Date())
+  const todayDate = new Date()
+  const todayPct  = Math.max(0, Math.min(100, pct(dateToYear(todayDate))))
+  const todayYear = dateToYear(todayDate)
+  const todayLabel = todayDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
 
   const visibleMDs = tree.filter(md => {
     const s = dateToYear(md.startDate)
@@ -218,8 +220,13 @@ function TimelineStrip({
           )
         })}
         <div className="absolute top-0 bottom-0 w-0.5 z-10" style={{ left: `${todayPct}%`, background: '#EC4899' }}>
-          <div className="absolute top-0 -translate-x-1/2 text-[8px] font-bold px-1 rounded" style={{ background: '#EC4899', color: '#fff', whiteSpace: 'nowrap' }}>
-            now
+          <div className="absolute top-0 -translate-x-1/2 flex flex-col items-center" style={{ whiteSpace: 'nowrap' }}>
+            <div className="text-[8px] font-bold px-1.5 py-0.5 rounded-t" style={{ background: '#EC4899', color: '#fff' }}>
+              Today
+            </div>
+            <div className="text-[7px] font-semibold px-1 py-0.5 rounded-b" style={{ background: '#9D174D', color: '#fce7f3' }}>
+              {todayLabel}
+            </div>
           </div>
         </div>
       </div>
