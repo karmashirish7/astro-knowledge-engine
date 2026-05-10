@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   Plus, Search, CircleDot, ExternalLink, Sparkles, X,
-  AlertCircle, BookOpen, FileText, Trash2, MapPin,
+  AlertCircle, BookOpen, FileText, Trash2, MapPin, Pencil, Check,
 } from 'lucide-react'
 import DivisionalView from '@/components/chart/DivisionalView'
 import Modal from '@/components/ui/Modal'
@@ -34,7 +34,7 @@ const parseArr = (s: string): string[] => { try { return JSON.parse(s || '[]') }
 
 // ── Chart List Card ────────────────────────────────────────────────────────
 
-function ChartCard({ chart, active, onClick, onDelete }: { chart: any; active: boolean; onClick: () => void; onDelete: () => void }) {
+function ChartCard({ chart, active, onClick, onDelete, onEdit }: { chart: any; active: boolean; onClick: () => void; onDelete: () => void; onEdit: () => void }) {
   const tags = parseArr(chart.tagsList)
   const calc = parseJ(chart.calculatedPositions)
   const lagnaSign = calc?.lagnaSign ? RASHIS[calc.lagnaSign - 1] : null
@@ -82,14 +82,126 @@ function ChartCard({ chart, active, onClick, onDelete }: { chart: any; active: b
             </div>
           )}
         </div>
-        <button
-          onClick={e => { e.stopPropagation(); onDelete() }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-500/10 transition-all flex-shrink-0 mt-0.5"
-          title="Delete chart">
-          <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
-        </button>
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5">
+          <button
+            onClick={e => { e.stopPropagation(); onEdit() }}
+            className="p-1 rounded hover:bg-purple-500/10 transition-colors"
+            title="Edit chart">
+            <Pencil className="w-3.5 h-3.5" style={{ color: '#7C3AED' }} />
+          </button>
+          <button
+            onClick={e => { e.stopPropagation(); onDelete() }}
+            className="p-1 rounded hover:bg-red-500/10 transition-colors"
+            title="Delete chart">
+            <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
+          </button>
+        </div>
       </div>
     </motion.div>
+  )
+}
+
+// ── Edit Chart Modal (chart list) ─────────────────────────────────────────
+
+function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () => void; onSaved: (c: any) => void }) {
+  const [form, setForm] = useState({
+    name:       chart.name       ?? '',
+    birthDate:  chart.birthDate  ?? '',
+    birthTime:  chart.birthTime  ?? '',
+    birthPlace: chart.birthPlace ?? '',
+    birthLat:   String(chart.birthLat ?? ''),
+    birthLon:   String(chart.birthLon ?? ''),
+    timezone:   chart.timezone   ?? '+05:30',
+    gender:     chart.gender     ?? '',
+  })
+  const [saving, setSaving] = useState(false)
+  const [error, setError]   = useState('')
+  const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const pickCity = (city: City) => setForm(f => ({
+    ...f,
+    birthPlace: `${city.name}${city.state ? ', ' + city.state : ''}, ${city.country}`,
+    birthLat: String(city.lat), birthLon: String(city.lon), timezone: city.tz,
+  }))
+
+  const save = async () => {
+    if (!form.name.trim()) { setError('Name is required'); return }
+    setSaving(true); setError('')
+    try {
+      const res = await fetch(`/api/chart/${chart.id}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name:       form.name.trim(),
+          birthDate:  form.birthDate  || undefined,
+          birthTime:  form.birthTime  || undefined,
+          birthPlace: form.birthPlace || undefined,
+          birthLat:   form.birthLat   ? parseFloat(form.birthLat)  : undefined,
+          birthLon:   form.birthLon   ? parseFloat(form.birthLon)  : undefined,
+          timezone:   form.timezone   || undefined,
+          gender:     form.gender     || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setError(data.error || 'Save failed'); setSaving(false); return }
+      onSaved(data)
+    } catch { setError('Save failed'); setSaving(false) }
+  }
+
+  const inp = (label: string, key: string, type = 'text', placeholder = '') => (
+    <div>
+      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>{label}</label>
+      <input type={type} value={(form as any)[key]} onChange={e => set(key, e.target.value)} placeholder={placeholder}
+        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+    </div>
+  )
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)' }}>
+      <motion.div initial={{ opacity: 0, scale: 0.96 }} animate={{ opacity: 1, scale: 1 }}
+        className="w-full max-w-lg rounded-2xl overflow-hidden flex flex-col"
+        style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', maxHeight: '90vh' }}>
+        <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Chart — {chart.name}</h2>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
+        </div>
+        <div className="overflow-y-auto p-5 space-y-4">
+          {inp('Name', 'name', 'text', 'Full name')}
+          <div className="grid grid-cols-2 gap-3">
+            {inp('Birth Date', 'birthDate', 'date')}
+            {inp('Birth Time', 'birthTime', 'time')}
+          </div>
+          <CitySearch onSelect={pickCity} />
+          {inp('Birth Place', 'birthPlace', 'text', 'City, Country')}
+          <div className="grid grid-cols-2 gap-3">
+            {inp('Latitude', 'birthLat', 'text', '28.6139')}
+            {inp('Longitude', 'birthLon', 'text', '77.2090')}
+          </div>
+          {inp('Timezone', 'timezone', 'text', '+05:30')}
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Gender</label>
+            <select value={form.gender} onChange={e => set('gender', e.target.value)}
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+              <option value="">Not specified</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
+        </div>
+        <div className="flex items-center justify-end gap-2 px-5 py-4 border-t flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
+          <button onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium"
+            style={{ color: 'var(--text-muted)', background: 'var(--bg-hover)' }}>Cancel</button>
+          <button onClick={save} disabled={saving}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-xs font-semibold disabled:opacity-50"
+            style={{ background: '#7C3AED', color: 'white' }}>
+            {saving ? 'Saving…' : <><Check className="w-3.5 h-3.5" /> Save Changes</>}
+          </button>
+        </div>
+      </motion.div>
+    </div>
   )
 }
 
@@ -529,6 +641,7 @@ export default function ChartPage() {
   const [charts, setCharts]         = useState<any[]>([])
   const [selected, setSelected]     = useState<any | null>(null)
   const [housePanel, setHousePanel] = useState<{ house: number; planets: string[]; entries: any[]; dictums: any[] } | null>(null)
+  const [editingChart, setEditing]  = useState<any | null>(null)
   const [addOpen, setAddOpen]       = useState(false)
   const [search, setSearch]         = useState('')
   const [reading, setReading]       = useState<string | null>(null)
@@ -649,7 +762,7 @@ export default function ChartPage() {
               )}
             </div>
           ) : filtered.map(c => (
-            <ChartCard key={c.id} chart={c} active={selected?.id === c.id} onClick={() => selectChart(c)} onDelete={() => handleDeleteChart(c)} />
+            <ChartCard key={c.id} chart={c} active={selected?.id === c.id} onClick={() => selectChart(c)} onDelete={() => handleDeleteChart(c)} onEdit={() => setEditing(c)} />
           ))}
         </div>
       </div>
@@ -862,6 +975,18 @@ export default function ChartPage() {
         onClose={() => setAddOpen(false)}
         onSaved={chart => { setAddOpen(false); load().then(() => setSelected(chart)) }}
       />
+
+      {editingChart && (
+        <EditChartModal
+          chart={editingChart}
+          onClose={() => setEditing(null)}
+          onSaved={updated => {
+            setCharts(prev => prev.map(c => c.id === updated.id ? updated : c))
+            if (selected?.id === updated.id) setSelected(updated)
+            setEditing(null)
+          }}
+        />
+      )}
     </div>
   )
 }

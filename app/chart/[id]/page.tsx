@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   ArrowLeft, Download, Plus, Save, Trash2, Tag, X, ChevronRight, ChevronDown,
-  Pencil, MapPin, Check,
+  Pencil, MapPin, Check, Menu, PanelLeftClose,
 } from 'lucide-react'
 import DivisionalView from '@/components/chart/DivisionalView'
 import ObservationEntry from '@/components/charts/ObservationEntry'
@@ -278,6 +278,7 @@ export default function ChartDetailPage() {
   const [saving, setSaving]         = useState(false)
   const [saved, setSaved]           = useState(false)
   const [editOpen, setEditOpen]     = useState(false)
+  const [leftOpen, setLeftOpen]     = useState(true)
   const [tagInput, setTagInput]     = useState('')
   const [kwInput, setKwInput]       = useState('')
   const [tags, setTags]             = useState<string[]>([])
@@ -425,6 +426,13 @@ export default function ChartDetailPage() {
             <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
         </Link>
+        <button onClick={() => setLeftOpen(o => !o)}
+          className="p-1.5 rounded-lg hover:bg-[#1E1E2A] transition-colors"
+          title={leftOpen ? 'Collapse sections' : 'Expand sections'}>
+          {leftOpen
+            ? <PanelLeftClose className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+            : <Menu className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />}
+        </button>
         <div className="flex-1 min-w-0">
           <h1 className="text-base font-bold truncate" style={{ color: 'var(--text-primary)' }}>{chart.name}</h1>
           <p className="text-xs" style={{ color: 'var(--text-muted)' }}>
@@ -454,7 +462,15 @@ export default function ChartDetailPage() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* ── Left: section nav ──────────────────────────────────────── */}
-        <div className="w-52 flex-shrink-0 flex flex-col border-r overflow-y-auto"
+        <AnimatePresence initial={false}>
+        {leftOpen && (
+        <motion.div
+          key="left-panel"
+          initial={{ width: 0, opacity: 0 }}
+          animate={{ width: 208, opacity: 1 }}
+          exit={{ width: 0, opacity: 0 }}
+          transition={{ duration: 0.2, ease: 'easeInOut' }}
+          className="flex-shrink-0 flex flex-col border-r overflow-y-auto overflow-x-hidden"
           style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
 
           {/* Lagna / Moon summary strip */}
@@ -524,7 +540,9 @@ export default function ChartDetailPage() {
               </button>
             )}
           </div>
-        </div>
+        </motion.div>
+        )}
+        </AnimatePresence>
 
         {/* ── Center: charts + note editor ─────────────────────────── */}
         <div className="flex-1 flex flex-col overflow-hidden">
