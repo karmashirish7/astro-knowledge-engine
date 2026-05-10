@@ -691,7 +691,12 @@ export default function ChartDetailPage() {
           <a href={`/api/chart/${id}/export-doc`} download
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
             style={{ background: 'rgba(16,185,129,0.12)', color: '#34D399', border: '1px solid #10B98133' }}>
-            <Download className="w-3.5 h-3.5" /> Export Doc
+            <Download className="w-3.5 h-3.5" /> Export HTML
+          </a>
+          <a href={`/api/chart/${id}/export-docx`} download
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"
+            style={{ background: 'rgba(59,130,246,0.12)', color: '#60A5FA', border: '1px solid #3B82F633' }}>
+            <Download className="w-3.5 h-3.5" /> Export DOCX
           </a>
           <a href={`/api/chart/${id}/export`} download
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold"

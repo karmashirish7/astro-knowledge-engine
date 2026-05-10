@@ -189,7 +189,7 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
     const rows = obs.map((o: any) =>
       `<tr>
         <td><span class="badge" style="background:${statusColor[o.status] ?? '#6B7280'}20;color:${statusColor[o.status] ?? '#6B7280'};border:1px solid ${statusColor[o.status] ?? '#6B7280'}40">${esc(o.status)}</span></td>
-        <td>${esc(o.text ?? o.content ?? '')}</td>
+        <td>${esc(o.statement ?? '')}</td>
         <td class="date-cell">${o.createdAt ? new Date(o.createdAt).toLocaleDateString() : ''}</td>
       </tr>`
     ).join('')
@@ -209,9 +209,9 @@ async function _GET(_req: NextRequest, { params }: { params: Promise<{ id: strin
   if (preds.length > 0) {
     const rows = preds.map((p: any) =>
       `<tr>
-        <td>${esc(p.text ?? p.content ?? '')}</td>
-        <td>${esc(p.targetDate ?? '')}</td>
-        <td>${esc(p.outcome ?? 'PENDING')}</td>
+        <td>${esc(p.prediction ?? '')}</td>
+        <td>${esc(p.targetDate ? new Date(p.targetDate).toLocaleDateString() : '')}</td>
+        <td>${esc(p.outcome ?? 'pending')}</td>
       </tr>`
     ).join('')
     predictionsHtml = `
