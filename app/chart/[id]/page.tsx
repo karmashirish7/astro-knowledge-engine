@@ -295,6 +295,93 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
     borderLeft: active === id ? '2px solid #7C3AED' : '2px solid transparent',
   })
 
+  const dropdownContent = (
+    <div className="px-3 pt-3 space-y-0">
+      <div className="pb-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Houses</p>
+        <div className="grid grid-cols-6 gap-1">
+          {HOUSE_LABELS.map(h => (
+            <button key={h.id} onClick={() => pick(h.id)}
+              className="py-1.5 rounded-lg text-xs font-semibold transition-colors relative" style={btn(h.id)}>
+              {h.label}
+              {hasNote(h.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t mx-0 my-2" style={{ borderColor: 'var(--border)' }} />
+
+      <div className="pb-1">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Planets</p>
+        <div className="grid grid-cols-3 gap-1">
+          {PLANET_SECTIONS.map(p => (
+            <button key={p.id} onClick={() => pick(p.id)}
+              className="py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors text-left relative" style={btn(p.id)}>
+              {p.label}
+              {hasNote(p.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t my-2" style={{ borderColor: 'var(--border)' }} />
+
+      <div className="pb-2">
+        <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Analysis</p>
+        {ANALYSIS_SECTIONS.map(a => (
+          <button key={a.id} onClick={() => pick(a.id)}
+            className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left" style={btn(a.id)}>
+            {a.label}
+            {hasNote(a.id) && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />}
+          </button>
+        ))}
+      </div>
+
+      {customSections.length > 0 && (
+        <>
+          <div className="border-t my-1" style={{ borderColor: 'var(--border)' }} />
+          <div className="pb-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Custom</p>
+            {customSections.map(s => (
+              <div key={s} className="flex items-center group">
+                <button onClick={() => pick(s)} className="flex-1 flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left" style={btn(s)}>
+                  {s}{hasNote(s) && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#7C3AED' }} />}
+                </button>
+                <button onClick={() => onDeleteCustom(s)} className="opacity-0 group-hover:opacity-100 p-1 rounded ml-1">
+                  <Trash2 className="w-3 h-3" style={{ color: '#EF4444' }} />
+                </button>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      <div className="pb-3 border-t pt-1" style={{ borderColor: 'var(--border)' }}>
+        {adding ? (
+          <div className="flex gap-1 mt-2">
+            <input autoFocus value={newName} onChange={e => setNew(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' && newName.trim()) { onAddCustom(newName.trim()); setNew(''); setAdding(false); setOpen(false) }
+                if (e.key === 'Escape') { setAdding(false); setNew('') }
+              }}
+              placeholder="Section name…"
+              className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+            <button onClick={() => { if (newName.trim()) { onAddCustom(newName.trim()); setNew(''); setAdding(false); setOpen(false) } }}
+              className="px-2 py-1 rounded-md text-xs" style={{ background: '#7C3AED', color: 'white' }}>+</button>
+          </div>
+        ) : (
+          <button onClick={() => setAdding(true)}
+            className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-xs"
+            style={{ color: 'var(--text-muted)' }}>
+            <Plus className="w-3.5 h-3.5" /> Add section
+          </button>
+        )}
+      </div>
+    </div>
+  )
+
   return (
     <div ref={ref} className="relative">
       <button ref={btnRef} onClick={handleToggle}
@@ -304,100 +391,23 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
         <ChevronDown className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)', transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
       </button>
 
-      <AnimatePresence>
-        {open && rect && createPortal(
-          <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.12 }}
-            className="rounded-xl overflow-hidden shadow-2xl"
-            style={{ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: 260, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
-          <div className="overflow-y-auto" style={{ maxHeight: 'calc(100vh - ' + (rect.bottom + 14) + 'px)' }}>
-
-            <div className="px-3 pt-3 pb-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Houses</p>
-              <div className="grid grid-cols-6 gap-1">
-                {HOUSE_LABELS.map(h => (
-                  <button key={h.id} onClick={() => pick(h.id)}
-                    className="py-1.5 rounded-lg text-xs font-semibold transition-colors relative" style={btn(h.id)}>
-                    {h.label}
-                    {hasNote(h.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
-                  </button>
-                ))}
+      {createPortal(
+        <AnimatePresence>
+          {open && rect && (
+            <motion.div
+              initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.12 }}
+              className="rounded-xl shadow-2xl overflow-hidden"
+              style={{ position: 'fixed', top: rect.bottom + 6, left: rect.left, width: 260, zIndex: 9999, background: 'var(--bg-card)', border: '1px solid var(--border)' }}
+            >
+              <div className="overflow-y-auto" style={{ maxHeight: `calc(100vh - ${rect.bottom + 14}px)` }}>
+                {dropdownContent}
               </div>
-            </div>
-
-            <div className="mx-3 my-2 border-t" style={{ borderColor: 'var(--border)' }} />
-
-            <div className="px-3 pb-1">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Planets</p>
-              <div className="grid grid-cols-3 gap-1">
-                {PLANET_SECTIONS.map(p => (
-                  <button key={p.id} onClick={() => pick(p.id)}
-                    className="py-1.5 px-2 rounded-lg text-xs font-semibold transition-colors text-left relative" style={btn(p.id)}>
-                    {p.label}
-                    {hasNote(p.id) && <span className="absolute top-0.5 right-0.5 w-1 h-1 rounded-full bg-purple-500" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mx-3 my-2 border-t" style={{ borderColor: 'var(--border)' }} />
-
-            <div className="px-3 pb-2">
-              <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Analysis</p>
-              {ANALYSIS_SECTIONS.map(a => (
-                <button key={a.id} onClick={() => pick(a.id)}
-                  className="w-full flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left" style={btn(a.id)}>
-                  {a.label}
-                  {hasNote(a.id) && <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#7C3AED' }} />}
-                </button>
-              ))}
-            </div>
-
-            {customSections.length > 0 && (
-              <>
-                <div className="mx-3 my-1 border-t" style={{ borderColor: 'var(--border)' }} />
-                <div className="px-3 pb-2">
-                  <p className="text-[10px] font-bold uppercase tracking-widest mb-1" style={{ color: 'var(--text-muted)' }}>Custom</p>
-                  {customSections.map(s => (
-                    <div key={s} className="flex items-center group">
-                      <button onClick={() => pick(s)} className="flex-1 flex items-center px-2 py-1.5 rounded-lg text-xs font-medium transition-colors text-left" style={btn(s)}>
-                        {s}{hasNote(s) && <span className="ml-auto w-1.5 h-1.5 rounded-full" style={{ background: '#7C3AED' }} />}
-                      </button>
-                      <button onClick={() => onDeleteCustom(s)} className="opacity-0 group-hover:opacity-100 p-1 rounded ml-1">
-                        <Trash2 className="w-3 h-3" style={{ color: '#EF4444' }} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-
-            <div className="px-3 pb-3 border-t" style={{ borderColor: 'var(--border)' }}>
-              {adding ? (
-                <div className="flex gap-1 mt-2">
-                  <input autoFocus value={newName} onChange={e => setNew(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && newName.trim()) { onAddCustom(newName.trim()); setNew(''); setAdding(false); setOpen(false) }
-                      if (e.key === 'Escape') { setAdding(false); setNew('') }
-                    }}
-                    placeholder="Section name…"
-                    className="flex-1 px-2 py-1 rounded-md text-xs outline-none"
-                    style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
-                  <button onClick={() => { if (newName.trim()) { onAddCustom(newName.trim()); setNew(''); setAdding(false); setOpen(false) } }}
-                    className="px-2 py-1 rounded-md text-xs" style={{ background: '#7C3AED', color: 'white' }}>+</button>
-                </div>
-              ) : (
-                <button onClick={() => setAdding(true)}
-                  className="w-full flex items-center gap-1.5 px-2 py-1.5 mt-1 rounded-lg text-xs"
-                  style={{ color: 'var(--text-muted)' }}>
-                  <Plus className="w-3.5 h-3.5" /> Add section
-                </button>
-              )}
-            </div>
-          </div>
-          </motion.div>,
-          document.body
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </div>
   )
 }
