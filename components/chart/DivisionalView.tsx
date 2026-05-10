@@ -79,8 +79,19 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
               </p>
             </div>
           ) : div ? (
-            <NorthIndianKundali lagna={div.lagna} planets={div.planets} planetDegrees={div.planetDegrees} />
+            <NorthIndianKundali
+              lagna={div.lagna}
+              planets={div.planets}
+              planetDegrees={div.planetDegrees}
+              visualLagnaHouse={visualLagnaHouse}
+              onVisualLagnaChange={setVLagna}
+            />
           ) : null}
+          {visualLagnaHouse !== 1 && hasPrecise && div && (
+            <p className="text-[10px] mt-1 text-center" style={{ color: '#EC4899' }}>
+              Rotated · As = actual ascendant
+            </p>
+          )}
         </div>
       </div>
     </div>
