@@ -295,8 +295,9 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
       <AnimatePresence>
         {open && (
           <motion.div initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={{ duration: 0.12 }}
-            className="absolute top-full mt-1.5 left-0 z-50 rounded-xl overflow-hidden overflow-y-auto shadow-2xl"
-            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', width: 260, maxHeight: 480 }}>
+            className="absolute top-full mt-1.5 left-0 z-50 rounded-xl overflow-hidden shadow-2xl"
+            style={{ background: 'var(--bg-card)', border: '1px solid var(--border)', width: 260 }}>
+          <div className="overflow-y-auto" style={{ maxHeight: 480 }}>
 
             <div className="px-3 pt-3 pb-1">
               <p className="text-[10px] font-bold uppercase tracking-widest mb-2" style={{ color: 'var(--text-muted)' }}>Houses</p>
@@ -380,6 +381,7 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
                 </button>
               )}
             </div>
+          </div>
           </motion.div>
         )}
       </AnimatePresence>
