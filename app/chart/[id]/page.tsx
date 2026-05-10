@@ -264,13 +264,18 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
   const [newName, setNew]   = useState('')
   const [adding, setAdding] = useState(false)
   const [rect, setRect]     = useState<DOMRect | null>(null)
-  const btnRef = useRef<HTMLButtonElement>(null)
-  const ref    = useRef<HTMLDivElement>(null)
+  const btnRef  = useRef<HTMLButtonElement>(null)
+  const ref     = useRef<HTMLDivElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     const h = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node) &&
-          btnRef.current && !btnRef.current.contains(e.target as Node)) setOpen(false)
+      const t = e.target as Node
+      if (
+        ref.current     && !ref.current.contains(t) &&
+        btnRef.current  && !btnRef.current.contains(t) &&
+        menuRef.current && !menuRef.current.contains(t)
+      ) setOpen(false)
     }
     document.addEventListener('mousedown', h); return () => document.removeEventListener('mousedown', h)
   }, [])
@@ -395,6 +400,7 @@ function SectionDropdown({ active, customSections, notes, onSelect, onDeleteCust
         <AnimatePresence>
           {open && rect && (
             <motion.div
+              ref={menuRef}
               initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}
               transition={{ duration: 0.12 }}
               className="rounded-xl shadow-2xl overflow-hidden"
