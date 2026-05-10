@@ -5,7 +5,8 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import { Star, Mail, Lock, AlertCircle } from 'lucide-react'
+import Image from 'next/image'
+import { Mail, Lock, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -42,12 +43,12 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4 glow-purple"
-            style={{ background: 'linear-gradient(135deg,#7C3AED,#4F46E5)' }}>
-            <Star className="w-6 h-6 text-white" fill="white" />
+          <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 overflow-hidden"
+            style={{ background: '#fff', boxShadow: '0 4px 24px rgba(0,0,0,0.4)' }}>
+            <Image src="/logo.png" alt="Akashvani Engine" width={80} height={80} className="object-contain" />
           </div>
-          <h1 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>
-            Astro Engine
+          <h1 className="text-2xl font-bold tracking-wide" style={{ color: 'var(--text-primary)' }}>
+            AKASHVANI ENGINE
           </h1>
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             Sign in to your account
