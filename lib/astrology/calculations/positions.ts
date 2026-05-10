@@ -1,8 +1,10 @@
 // Swiss Ephemeris — geocentric, Lahiri sidereal, mean nodes
+// Wrapped in try-catch so a failed native compile doesn't crash the module at import time.
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const sw = require('swisseph')
+let sw: any = null
+try { sw = require('swisseph') } catch { /* swisseph unavailable — calculateChart will throw */ }
 
-const FLAGS = sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL
+const FLAGS = sw ? (sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL) : 0
 
 export const SIGN_NAMES = [
   'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
@@ -51,7 +53,7 @@ function parseLon(lon: number): PlanetPosition {
   }
 }
 
-const GRAHA_IDS = [
+const GRAHA_IDS: { key: string; id: number }[] = sw ? [
   { key: 'Sun',     id: sw.SE_SUN     },
   { key: 'Moon',    id: sw.SE_MOON    },
   { key: 'Mars',    id: sw.SE_MARS    },
@@ -59,12 +61,14 @@ const GRAHA_IDS = [
   { key: 'Jupiter', id: sw.SE_JUPITER },
   { key: 'Venus',   id: sw.SE_VENUS   },
   { key: 'Saturn',  id: sw.SE_SATURN  },
-]
+] : []
 
 export function calculateChart(params: {
   year: number; month: number; day: number
   utcHour: number; lat: number; lon: number
 }): ChartPositions {
+  if (!sw) throw new Error('swisseph native addon is not available in this environment')
+
   const { year, month, day, utcHour, lat, lon } = params
 
   sw.swe_set_sid_mode(sw.SE_SIDM_LAHIRI, 0, 0)
