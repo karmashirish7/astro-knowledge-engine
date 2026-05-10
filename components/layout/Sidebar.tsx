@@ -8,7 +8,7 @@ import { useState } from 'react'
 import Image from 'next/image'
 import {
   LayoutDashboard, Network, CircleDot, Zap, FileText, BookOpen,
-  FlaskConical, Search, LogOut, User, Menu, X,
+  FlaskConical, Search, LogOut, User,
 } from 'lucide-react'
 
 const TOP_NAV = [
@@ -49,14 +49,16 @@ export default function Sidebar() {
     >
       {/* Header */}
       <div className="p-3 border-b flex-shrink-0 flex items-center" style={{ borderColor: 'var(--border)', minHeight: 56 }}>
-        {/* Logo mark — always visible */}
-        <div
-          className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden"
+        {/* Logo — click to toggle collapse */}
+        <button
+          onClick={() => setCollapsed(c => !c)}
+          className="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden transition-transform hover:scale-105 active:scale-95"
           style={{ background: '#fff', boxShadow: '0 0 0 1.5px rgba(255,255,255,0.2)' }}
-          title="Akashvani Engine"
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
         >
           <Image src="/logo.png" alt="Akashvani" width={32} height={32} className="object-contain" />
-        </div>
+        </button>
 
         <AnimatePresence initial={false}>
           {!collapsed && (
@@ -77,15 +79,6 @@ export default function Sidebar() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        <button
-          onClick={() => setCollapsed(c => !c)}
-          className="flex-shrink-0 p-1.5 rounded-lg transition-colors hover:bg-white/5 ml-auto"
-          style={{ color: 'var(--text-muted)' }}
-          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {collapsed ? <Menu className="w-4 h-4" /> : <X className="w-4 h-4" />}
-        </button>
       </div>
 
       {/* Nav */}
