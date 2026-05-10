@@ -12,8 +12,8 @@ import ObservationEntry from '@/components/charts/ObservationEntry'
 import PredictionEntry from '@/components/charts/PredictionEntry'
 import DashaView from '@/components/charts/DashaView'
 import { deserializeDashaTree, getCurrentDasha, deserializeYoginiTree } from '@/lib/astrology/dasha'
-import { getPlanetDignity } from '@/lib/astrology/calculations/dignity'
 import { searchCities, type City } from '@/lib/cities'
+import ShadbalaBars from '@/components/charts/ShadbalaBars'
 
 // ── Astrology helpers ──────────────────────────────────────────────────────
 
@@ -45,11 +45,6 @@ const PLANET_ASPECTS: Record<string, number[]> = {
   Jupiter:[5,7,9], Venus:[7], Saturn:[3,7,10], Rahu:[5,7,9], Ketu:[5,7,9],
 }
 
-// Directional strength — house of peak Dig Bala
-const DIG_BALA_PEAK: Record<string, number> = {
-  Sun:10, Mars:10, Moon:4, Venus:4, Mercury:1, Jupiter:1, Saturn:7, Rahu:3, Ketu:9,
-}
-
 function houseSign(houseNum: number, lagnaSign: number) {
   const signNum = ((lagnaSign - 1 + houseNum - 1) % 12) + 1
   return { sign: SIGN_NAMES_12[signNum - 1] ?? '', signNum }
@@ -67,13 +62,6 @@ function aspectingPlanets(target: number, houseNumbers: Record<string, number>):
     )
     return hits ? [planet] : []
   })
-}
-
-function digBalaScore(planet: string, house: number): number {
-  const peak = DIG_BALA_PEAK[planet] ?? 10
-  const diff = Math.abs(house - peak)
-  const wrap = diff > 6 ? 12 - diff : diff
-  return Math.round((1 - wrap / 6) * 100)
 }
 
 function buildHouseSubtitle(houseNum: number, calc: any): string {
@@ -153,15 +141,6 @@ const ALL_STANDARD_IDS = new Set([
   ...ANALYSIS_SECTIONS.map(a => a.id),
 ])
 
-// ── Dignity helpers for Shadbala display ──────────────────────────────────
-
-const DIGNITY_LABEL: Record<string, string> = {
-  exalted: 'Exalted', moolatrikona: 'Moolatrikona', own: 'Own', neutral: 'Neutral', debilitated: 'Debilitated',
-}
-const DIGNITY_COLOR: Record<string, string> = {
-  exalted: '#10B981', moolatrikona: '#3B82F6', own: '#7C3AED',
-  neutral: '#94A3B8', debilitated: '#EF4444',
-}
 
 // ── City Search ────────────────────────────────────────────────────────────
 
@@ -650,45 +629,7 @@ export default function ChartDetailPage() {
         <p className="text-xs" style={{ color: 'var(--text-muted)' }}>No calculated positions — add birth coordinates.</p>
       </div>
     )
-    return (
-      <div className="p-4">
-        <p className="text-[10px] font-bold uppercase tracking-widest mb-3" style={{ color: 'var(--text-muted)' }}>
-          Simplified · Dignity + Dig Bala
-        </p>
-        <div className="space-y-2">
-          {PLANET_LIST.filter(p => calc.planets?.[p]).map(planet => {
-            const pos     = calc.planets[planet]
-            const house   = calc.houseNumbers?.[planet] ?? 0
-            const dignity = getPlanetDignity(planet, pos.sign)
-            const dig     = digBalaScore(planet, house)
-            const digColor = dig >= 70 ? '#10B981' : dig >= 40 ? '#F59E0B' : '#EF4444'
-            return (
-              <div key={planet} className="rounded-lg p-2.5"
-                style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
-                <div className="flex items-center justify-between mb-1.5">
-                  <span className="text-xs font-semibold" style={{ color: 'var(--text-primary)' }}>{planet}</span>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded font-semibold"
-                    style={{ background: `${DIGNITY_COLOR[dignity]}18`, color: DIGNITY_COLOR[dignity] }}>
-                    {DIGNITY_LABEL[dignity]}
-                  </span>
-                </div>
-                <div className="flex items-center justify-between text-[10px] mb-1" style={{ color: 'var(--text-muted)' }}>
-                  <span>{pos.sign} · H{house}</span>
-                  <span style={{ color: digColor }}>Dig {dig}%</span>
-                </div>
-                {/* Dig Bala bar */}
-                <div className="h-1 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-                  <div className="h-full rounded-full transition-all" style={{ width: `${dig}%`, background: digColor }} />
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <p className="text-[10px] mt-3" style={{ color: 'var(--text-muted)' }}>
-          Dig Bala = directional strength based on ideal house position. Full Shadbala requires planetary speed, temporal, and aspectual calculations.
-        </p>
-      </div>
-    )
+    return <ShadbalaBars calc={calc} />
   }
 
   return (
