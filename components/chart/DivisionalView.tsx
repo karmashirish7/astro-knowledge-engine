@@ -22,23 +22,35 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
 
   return (
     <div className="w-full">
-      <div className="flex gap-4 w-full">
+      {/* Single controls row — keeps both chart columns starting at the same Y */}
+      <div className="mb-2 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <span className="text-xs font-bold tracking-wider" style={{ color: '#A78BFA' }}>D1 · Rasi</span>
+          <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/</span>
+          <span className="text-xs font-bold tracking-wider" style={{ color: '#10B981' }}>{selected.abbr} · {selected.name}</span>
+          {visualLagnaHouse !== 1 && (
+            <button
+              onClick={() => setVLagna(1)}
+              className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-white/5"
+              style={{ color: '#EC4899', border: '1px solid #EC489933' }}>
+              ↺ Reset lagna
+            </button>
+          )}
+        </div>
+        <select
+          value={divN}
+          onChange={e => setDivN(Number(e.target.value))}
+          className="text-sm font-semibold px-3 py-1.5 rounded-lg outline-none cursor-pointer"
+          style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 160 }}>
+          {VARGAS.map(v => (
+            <option key={v.n} value={v.n}>{v.abbr} · {v.name}</option>
+          ))}
+        </select>
+      </div>
 
-        {/* D1 — rotatable */}
+      {/* Both charts — headers gone, so they start at exactly the same Y */}
+      <div className="flex gap-4 w-full">
         <div className="flex-1 min-w-0">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider" style={{ color: '#A78BFA' }}>
-              D1 · Rasi
-            </span>
-            {visualLagnaHouse !== 1 && (
-              <button
-                onClick={() => setVLagna(1)}
-                className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-white/5"
-                style={{ color: '#EC4899', border: '1px solid #EC489933' }}>
-                ↺ Reset lagna
-              </button>
-            )}
-          </div>
           <NorthIndianKundali
             lagna={d1Lagna}
             planets={d1Planets}
@@ -47,30 +59,9 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
             visualLagnaHouse={visualLagnaHouse}
             onVisualLagnaChange={setVLagna}
           />
-          {visualLagnaHouse !== 1 && (
-            <p className="text-[10px] mt-1 text-center" style={{ color: '#EC4899' }}>
-              Rotated · As = actual ascendant
-            </p>
-          )}
         </div>
 
-        {/* Divisional chart */}
         <div className="flex-1 min-w-0">
-          <div className="mb-2 flex items-center justify-between">
-            <span className="text-xs font-bold tracking-wider" style={{ color: '#10B981' }}>
-              {selected.abbr} · {selected.name}
-            </span>
-            <select
-              value={divN}
-              onChange={e => setDivN(Number(e.target.value))}
-              className="text-sm font-semibold px-3 py-1.5 rounded-lg outline-none cursor-pointer"
-              style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 160 }}>
-              {VARGAS.map(v => (
-                <option key={v.n} value={v.n}>{v.abbr} · {v.name}</option>
-              ))}
-            </select>
-          </div>
-
           {!hasPrecise ? (
             <div className="aspect-square rounded-lg flex items-center justify-center"
               style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
@@ -87,13 +78,14 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
               onVisualLagnaChange={setVLagna}
             />
           ) : null}
-          {visualLagnaHouse !== 1 && hasPrecise && div && (
-            <p className="text-[10px] mt-1 text-center" style={{ color: '#EC4899' }}>
-              Rotated · As = actual ascendant
-            </p>
-          )}
         </div>
       </div>
+
+      {visualLagnaHouse !== 1 && (
+        <p className="text-[10px] mt-1 text-center" style={{ color: '#EC4899' }}>
+          Rotated · As = actual ascendant
+        </p>
+      )}
     </div>
   )
 }
