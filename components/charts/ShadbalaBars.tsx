@@ -81,9 +81,20 @@ export function computeShadbala(calc: any): Record<ShadbalaType, Record<string, 
     Sun:270, Mars:270, Moon:90, Venus:90, Mercury:0, Jupiter:0, Saturn:180,
   }
 
-  const ASPECTS_OFF: Record<string, number[]> = {
-    Sun:[7], Moon:[7], Mars:[4,7,8], Mercury:[7],
-    Jupiter:[5,7,9], Venus:[7], Saturn:[3,7,10],
+  // Aspect strength (virupas) by house offset from the aspecting planet
+  const ASPECT_STR: Record<string, Record<number, number>> = {
+    Sun:     { 7: 60 },
+    Moon:    { 7: 60 },
+    Mars:    { 4: 45, 7: 60, 8: 45 },
+    Mercury: { 7: 60 },
+    Jupiter: { 5: 30, 7: 60, 9: 30 },
+    Venus:   { 7: 60 },
+    Saturn:  { 3: 15, 7: 60, 10: 15 },
+  }
+
+  // Mean daily motion (degrees/day) for Cheshta Bala scaling
+  const MEAN_SPEED: Record<string, number> = {
+    Mars: 0.524, Mercury: 1.383, Jupiter: 0.083, Venus: 1.200, Saturn: 0.033,
   }
 
   for (const planet of PLANETS_7) {
@@ -113,7 +124,11 @@ export function computeShadbala(calc: any): Record<ShadbalaType, Record<string, 
     const drk = deg < 10 ? 1 : deg < 20 ? 2 : 3
     const drekkana = (isMale && drk === 1) || (isFem && drk === 2) || (!isMale && !isFem && drk === 3) ? 15 : 0
 
-    result.sthana[planet] = uchcha + kendra + ojayugma + drekkana
+    // Hora Bala — odd signs: 0-15° = Sun hora, 15-30° = Moon hora; even signs reversed
+    const inSunHora = (sign % 2 === 1 && deg < 15) || (sign % 2 === 0 && deg >= 15)
+    const hora = (isMale && inSunHora) || (isFem && !inSunHora) ? 15 : 0
+
+    result.sthana[planet] = uchcha + kendra + ojayugma + drekkana + hora
 
     // ── 2. Dig Bala ──
     const hsl   = (lon - lagnaLon + 360) % 360
@@ -144,17 +159,24 @@ export function computeShadbala(calc: any): Record<ShadbalaType, Record<string, 
     // Vara Bala
     const vara = VAR_LORDS[dow] === planet ? 45 : 0
 
-    result.kala[planet] = Math.round(natho * 0.35 + paksha + vara)
+    result.kala[planet] = Math.round(natho + paksha + vara)
 
-    // ── 4. Cheshta Bala (approx — requires true planetary speed) ──
+    // ── 4. Cheshta Bala ──
     // Sun & Moon have no Cheshta Bala in classical texts
     if (planet === 'Sun' || planet === 'Moon') {
       result.cheshta[planet] = 0
     } else {
-      // Rough proxy: faster planets tend to be at earlier degrees of a sign after
-      // a sign change; use a sine wave over the degree position
-      const chesthaBase = Math.sin((deg * Math.PI) / 30) * 15 + 25
-      result.cheshta[planet] = Math.round(chesthaBase)
+      const speed = pos.speed ?? 0
+      let cheshta: number
+      if (speed < -0.001) {
+        cheshta = 60                                           // Vakra (retrograde)
+      } else if (Math.abs(speed) < 0.001) {
+        cheshta = 0                                            // Vikala (stationary)
+      } else {
+        const mean = MEAN_SPEED[planet] ?? 1
+        cheshta = Math.min(45, Math.round((speed / mean) * 30)) // Direct: 0–45
+      }
+      result.cheshta[planet] = cheshta
     }
 
     // ── 5. Naisargika Bala (fixed) ──
@@ -165,15 +187,16 @@ export function computeShadbala(calc: any): Record<ShadbalaType, Record<string, 
     for (const other of PLANETS_7) {
       if (other === planet) continue
       const oh = calc.houseNumbers[other] ?? 0
-      const offs = ASPECTS_OFF[other] ?? [7]
-      const aspects = offs.some(off => ((oh - 1 + off - 1) % 12) + 1 === house)
-      if (!aspects) continue
-      // Benefic / malefic aspect weight
-      const isBeneficAspect = ['Moon','Mercury','Jupiter','Venus'].includes(other)
-      const dignity = getPlanetDignity(other, calc.planets[other]?.sign ?? '')
-      const dignityMul = dignity === 'exalted' || dignity === 'moolatrikona' ? 1.5
-                        : dignity === 'debilitated' ? 0.5 : 1
-      drig += isBeneficAspect ? 15 * dignityMul : -15 * dignityMul
+      const aspectMap = ASPECT_STR[other] ?? { 7: 60 }
+      for (const [offStr, strength] of Object.entries(aspectMap)) {
+        const off = Number(offStr)
+        if (((oh - 1 + off - 1) % 12) + 1 !== house) continue
+        const isBeneficAspect = ['Moon','Mercury','Jupiter','Venus'].includes(other)
+        const dignity = getPlanetDignity(other, calc.planets[other]?.sign ?? '')
+        const dignityMul = dignity === 'exalted' || dignity === 'moolatrikona' ? 1.5
+                          : dignity === 'debilitated' ? 0.5 : 1
+        drig += isBeneficAspect ? strength * dignityMul : -strength * dignityMul
+      }
     }
     result.drig[planet] = Math.round(drig * 10) / 10
 
@@ -324,8 +347,8 @@ export default function ShadbalaBars({ calc }: Props) {
       </div>
 
       <p className="text-[9px] leading-relaxed px-1" style={{ color: 'var(--text-muted)' }}>
-        ∗ Approximate — Sthāna uses Uchcha + Kendradi + Ojayugma + Drekkana (no Sapta Varga).
-        Kāla uses Nathonnatha + Paksha + Vara. Cheshta requires planetary speed data.
+        ∗ Sthāna = Uchcha + Kendradi + Ojayugma + Drekkana + Hora (Sapta Varga omitted).
+        Kāla = Nathonnatha + Paksha + Vara. Drig uses classical partial aspect strengths (60/45/30/15).
       </p>
     </div>
   )

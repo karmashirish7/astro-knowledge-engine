@@ -16,6 +16,7 @@ export interface PlanetPosition {
   seconds:    number
   dms:        string
   formatted:  string
+  speed:      number   // degrees/day; negative = retrograde
 }
 
 export interface ChartPositions {
@@ -46,6 +47,7 @@ function parseLon(lon: number): PlanetPosition {
     seconds:    sec,
     dms:        `${deg}°${pad(min)}'${pad(sec)}"`,
     formatted:  `${deg} ${SIGN_NAMES[signIdx]} ${pad(min)}'${pad(sec)}"`,
+    speed:      0,
   }
 }
 
@@ -57,7 +59,7 @@ export function calculateChart(params: {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   const sw = require('swisseph')
 
-  const FLAGS = sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL
+  const FLAGS = sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL | sw.SEFLG_SPEED
 
   const { year, month, day, utcHour, lat, lon } = params
 
@@ -80,13 +82,13 @@ export function calculateChart(params: {
   for (const { key, id } of GRAHA_IDS) {
     const r = sw.swe_calc_ut(jd, id, FLAGS)
     if (r.error) throw new Error(`Swiss Ephemeris error for ${key}: ${r.error}`)
-    planets[key] = parseLon(r.longitude)
+    planets[key] = { ...parseLon(r.longitude), speed: r.longitudeSpeed ?? 0 }
   }
 
   const rahuR = sw.swe_calc_ut(jd, sw.SE_MEAN_NODE, FLAGS)
   if (rahuR.error) throw new Error(`Swiss Ephemeris error for Rahu: ${rahuR.error}`)
-  planets['Rahu'] = parseLon(rahuR.longitude)
-  planets['Ketu'] = parseLon(rahuR.longitude + 180)
+  planets['Rahu'] = { ...parseLon(rahuR.longitude),       speed: rahuR.longitudeSpeed ?? 0 }
+  planets['Ketu'] = { ...parseLon(rahuR.longitude + 180), speed: -(rahuR.longitudeSpeed ?? 0) }
 
   const h        = sw.swe_houses_ex(jd, sw.SEFLG_SIDEREAL, lat, lon, 80)
   const lagna    = parseLon(h.ascendant)
