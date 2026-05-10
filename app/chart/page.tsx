@@ -471,6 +471,12 @@ function NewChartModal({ open, onClose, onSaved }: {
       })
       const data = await res.json()
       if (!res.ok) { setError(data.error || 'Save failed'); return }
+      if (data._calcWarning) {
+        setError(`Chart saved — but positions not calculated: ${data._calcWarning}`)
+        setSaving(false)
+        onSaved(data)
+        return
+      }
       setForm(EMPTY_FORM); setPreview(null); setError(null)
       onSaved(data)
     } catch (e: any) { setError(e.message || 'Save failed') }

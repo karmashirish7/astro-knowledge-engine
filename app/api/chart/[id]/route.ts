@@ -4,6 +4,8 @@ import { calculateChart, parseTimezone, localToUTC } from '@/lib/astrology'
 import { flattenToPlanetaryData } from '@/lib/planetary-data'
 import { withPlanets } from '@/lib/chart-response'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
@@ -24,11 +26,8 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params
-    const body = await req.json()
+    const body   = await req.json()
 
-    // Recalculate if birth coordinates change
-    let calcUpdate: { lagna?: string; calculatedPositions?: string } = {}
-    let newCalc = null
     const current = await prisma.chart.findUnique({ where: { id } })
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -37,6 +36,9 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
     const date = body.birthDate ?? current.birthDate
     const time = body.birthTime ?? current.birthTime
     const tz   = body.timezone  ?? current.timezone
+
+    let calcUpdate: Record<string, string> = {}
+    let newCalc = null
 
     if (lat && lon && date && time) {
       try {
@@ -47,10 +49,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
           year, month, day: day + dayOffset, utcHour,
           lat: Number(lat), lon: Number(lon),
         })
-        calcUpdate.lagna = String(newCalc.lagnaSign)
-        calcUpdate.calculatedPositions = JSON.stringify(newCalc)
-      } catch (err) {
-        console.error('Ephemeris recalculation failed (non-fatal):', err)
+        calcUpdate = {
+          lagna: String(newCalc.lagnaSign),
+          calculatedPositions: JSON.stringify(newCalc),
+        }
+      } catch (err: unknown) {
+        console.error('[chart PUT] recalculation failed:', (err as Error).message)
       }
     }
 
@@ -68,31 +72,28 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         source:      body.source      ?? undefined,
         reliability: body.reliability ?? undefined,
         notes:       body.notes       ?? undefined,
-        keywords: body.keywords !== undefined ? JSON.stringify(body.keywords) : undefined,
-        tagsList:  body.tagsList  !== undefined ? JSON.stringify(body.tagsList)  : undefined,
+        keywords:    body.keywords !== undefined ? JSON.stringify(body.keywords) : undefined,
+        tagsList:    body.tagsList  !== undefined ? JSON.stringify(body.tagsList)  : undefined,
         ...calcUpdate,
       },
       include: { planetaryData: true, chartNotes: { orderBy: { order: 'asc' } } },
     })
 
     if (newCalc) {
-      let birthDateObj: Date | undefined
-      if (date && time) {
-        const tzOffset = parseTimezone(tz || '+00:00')
-        const timeStr  = time.length === 5 ? time + ':00' : time
-        const local    = new Date(`${date}T${timeStr}`)
-        birthDateObj   = new Date(local.getTime() - tzOffset * 3600000)
-      }
+      const tzOffset = parseTimezone(tz || '+00:00')
+      const timeStr  = time.length === 5 ? `${time}:00` : time
+      const local    = new Date(`${date}T${timeStr}`)
+      const birthDateObj = new Date(local.getTime() - tzOffset * 3600000)
       await prisma.planetaryData.upsert({
         where:  { chartId: id },
-        create: flattenToPlanetaryData(id, newCalc, birthDateObj) as any,
-        update: flattenToPlanetaryData(id, newCalc, birthDateObj) as any,
+        create: flattenToPlanetaryData(id, newCalc, birthDateObj) as never,
+        update: flattenToPlanetaryData(id, newCalc, birthDateObj) as never,
       })
     }
 
     return NextResponse.json(withPlanets(chart))
   } catch (err) {
-    console.error(err)
+    console.error('[chart PUT] fatal:', err)
     return NextResponse.json({ error: 'Failed to update chart' }, { status: 500 })
   }
 }

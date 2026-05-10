@@ -1,10 +1,6 @@
 // Swiss Ephemeris — geocentric, Lahiri sidereal, mean nodes
-// Wrapped in try-catch so a failed native compile doesn't crash the module at import time.
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-let sw: any = null
-try { sw = require('swisseph') } catch { /* swisseph unavailable — calculateChart will throw */ }
-
-const FLAGS = sw ? (sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL) : 0
+// require() is inside calculateChart (not module scope) so Next.js static
+// analysis never freezes sw=null at import time.
 
 export const SIGN_NAMES = [
   'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
@@ -14,21 +10,21 @@ export const SIGN_NAMES = [
 export interface PlanetPosition {
   longitude:  number
   sign:       string
-  signNumber: number  // 1 = Aries … 12 = Pisces
-  degrees:    number  // degree within sign (0–29)
+  signNumber: number
+  degrees:    number
   minutes:    number
   seconds:    number
-  dms:        string  // "11°56'49\""
-  formatted:  string  // "11 Capricorn 56'49\""
+  dms:        string
+  formatted:  string
 }
 
 export interface ChartPositions {
   jd:          number
   ayanamsa:    number
   lagna:       PlanetPosition
-  lagnaSign:   number                        // 1–12
+  lagnaSign:   number
   planets:     Record<string, PlanetPosition>
-  houseNumbers: Record<string, number>       // planet → whole-sign house (1–12)
+  houseNumbers: Record<string, number>
 }
 
 function parseLon(lon: number): PlanetPosition {
@@ -53,21 +49,15 @@ function parseLon(lon: number): PlanetPosition {
   }
 }
 
-const GRAHA_IDS: { key: string; id: number }[] = sw ? [
-  { key: 'Sun',     id: sw.SE_SUN     },
-  { key: 'Moon',    id: sw.SE_MOON    },
-  { key: 'Mars',    id: sw.SE_MARS    },
-  { key: 'Mercury', id: sw.SE_MERCURY },
-  { key: 'Jupiter', id: sw.SE_JUPITER },
-  { key: 'Venus',   id: sw.SE_VENUS   },
-  { key: 'Saturn',  id: sw.SE_SATURN  },
-] : []
-
 export function calculateChart(params: {
   year: number; month: number; day: number
   utcHour: number; lat: number; lon: number
 }): ChartPositions {
-  if (!sw) throw new Error('swisseph native addon is not available in this environment')
+  // Direct require at call time — same pattern as /api/debug route (which works).
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const sw = require('swisseph')
+
+  const FLAGS = sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL
 
   const { year, month, day, utcHour, lat, lon } = params
 
@@ -76,6 +66,16 @@ export function calculateChart(params: {
   const jd       = sw.swe_julday(year, month, day, utcHour, sw.SE_GREG_CAL)
   const ayanamsa = sw.swe_get_ayanamsa_ut(jd)
   const planets: Record<string, PlanetPosition> = {}
+
+  const GRAHA_IDS = [
+    { key: 'Sun',     id: sw.SE_SUN     },
+    { key: 'Moon',    id: sw.SE_MOON    },
+    { key: 'Mars',    id: sw.SE_MARS    },
+    { key: 'Mercury', id: sw.SE_MERCURY },
+    { key: 'Jupiter', id: sw.SE_JUPITER },
+    { key: 'Venus',   id: sw.SE_VENUS   },
+    { key: 'Saturn',  id: sw.SE_SATURN  },
+  ]
 
   for (const { key, id } of GRAHA_IDS) {
     const r = sw.swe_calc_ut(jd, id, FLAGS)
@@ -92,9 +92,8 @@ export function calculateChart(params: {
   const lagna    = parseLon(h.ascendant)
   const lagnaSign = lagna.signNumber
 
-  const allPlanets = [...GRAHA_IDS.map(p => p.key), 'Rahu', 'Ketu']
   const houseNumbers: Record<string, number> = {}
-  for (const key of allPlanets) {
+  for (const key of [...GRAHA_IDS.map(p => p.key), 'Rahu', 'Ketu']) {
     houseNumbers[key] = ((planets[key].signNumber - lagnaSign + 12) % 12) + 1
   }
 

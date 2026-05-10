@@ -4,6 +4,8 @@ import { calculateChart, parseTimezone, localToUTC } from '@/lib/astrology'
 import { flattenToPlanetaryData } from '@/lib/planetary-data'
 import { withPlanets, withPlanetsMany } from '@/lib/chart-response'
 
+export const dynamic = 'force-dynamic'
+
 export async function GET() {
   try {
     const charts = await prisma.chart.findMany({
@@ -26,6 +28,8 @@ export async function POST(req: NextRequest) {
     } = body
 
     let calc = null
+    let calcError: string | null = null
+
     if (birthLat && birthLon && birthDate && birthTime) {
       try {
         const [year, month, day] = birthDate.split('-').map(Number)
@@ -35,49 +39,48 @@ export async function POST(req: NextRequest) {
           year, month, day: day + dayOffset, utcHour,
           lat: Number(birthLat), lon: Number(birthLon),
         })
-      } catch (err) {
-        console.error('Ephemeris calculation failed (non-fatal):', err)
+      } catch (err: unknown) {
+        calcError = (err as Error).message
+        console.error('[chart POST] calculation failed:', calcError)
       }
     }
 
     const chart = await prisma.chart.create({
       data: {
         name,
-        gender:             gender     || '',
-        birthDate:          birthDate  || '',
-        birthTime:          birthTime  || '',
-        birthPlace:         birthPlace || '',
-        birthLat:           birthLat   || '',
-        birthLon:           birthLon   || '',
-        timezone:           timezone   || '+05:30',
-        lagna:              calc ? String(calc.lagnaSign) : '',
+        gender:              gender     || '',
+        birthDate:           birthDate  || '',
+        birthTime:           birthTime  || '',
+        birthPlace:          birthPlace || '',
+        birthLat:            birthLat   || '',
+        birthLon:            birthLon   || '',
+        timezone:            timezone   || '+05:30',
+        lagna:               calc ? String(calc.lagnaSign) : '',
         calculatedPositions: calc ? JSON.stringify(calc) : '{}',
-        source:             source     || '',
-        reliability:        reliability ?? null,
-        notes:              notes      || '',
-        keywords: JSON.stringify(keywords || []),
+        source:              source     || '',
+        reliability:         reliability ?? null,
+        notes:               notes      || '',
+        keywords:  JSON.stringify(keywords  || []),
         tagsList:  JSON.stringify(tagsList  || []),
       },
       include: { planetaryData: true },
     })
 
     if (calc) {
-      let birthDateObj: Date | undefined
-      if (birthDate && birthTime) {
-        const tzOffset = parseTimezone(timezone || '+00:00')
-        const timeStr  = birthTime.length === 5 ? birthTime + ':00' : birthTime
-        // Parse as local time then shift to UTC
-        const local    = new Date(`${birthDate}T${timeStr}`)
-        birthDateObj   = new Date(local.getTime() - tzOffset * 3600000)
-      }
+      const tzOffset = parseTimezone(timezone || '+00:00')
+      const timeStr  = birthTime.length === 5 ? `${birthTime}:00` : birthTime
+      const local    = new Date(`${birthDate}T${timeStr}`)
+      const birthDateObj = new Date(local.getTime() - tzOffset * 3600000)
       await prisma.planetaryData.create({
-        data: flattenToPlanetaryData(chart.id, calc, birthDateObj) as any,
+        data: flattenToPlanetaryData(chart.id, calc, birthDateObj) as never,
       })
     }
 
-    return NextResponse.json(withPlanets(chart), { status: 201 })
+    const response = withPlanets(chart) as Record<string, unknown>
+    if (calcError) response._calcError = calcError
+    return NextResponse.json(response, { status: 201 })
   } catch (err) {
-    console.error(err)
+    console.error('[chart POST] fatal:', err)
     return NextResponse.json({ error: 'Failed to create chart' }, { status: 500 })
   }
 }

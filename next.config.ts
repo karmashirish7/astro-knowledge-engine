@@ -1,8 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // swisseph is a native Node.js addon — must not be bundled by webpack
   serverExternalPackages: ['swisseph'],
+  // Tell Vercel's file tracer to always bundle the swisseph native .node binary
+  outputFileTracingIncludes: {
+    '/api/**': ['./node_modules/swisseph/**'],
+  },
 };
 
 export default nextConfig;
