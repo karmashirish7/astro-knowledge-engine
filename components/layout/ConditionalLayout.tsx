@@ -9,7 +9,7 @@ export default function ConditionalLayout({ children }: { children: React.ReactN
   const path = usePathname()
 
   if (AUTH_PATHS.includes(path)) {
-    return <>{children}</>
+    return <div className="flex-1 min-h-screen">{children}</div>
   }
 
   return (
