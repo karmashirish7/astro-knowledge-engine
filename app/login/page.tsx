@@ -5,7 +5,6 @@ import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
-import Image from 'next/image'
 import { Mail, Lock, AlertCircle } from 'lucide-react'
 
 export default function LoginPage() {
@@ -43,7 +42,8 @@ export default function LoginPage() {
 
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <Image src="/logo.png" alt="Akashvani Engine" width={180} height={180} className="object-contain mb-2" unoptimized />
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="Akashvani Engine" width={180} height={180} className="object-contain mb-2" />
           <p className="text-sm mt-1" style={{ color: 'var(--text-muted)' }}>
             Sign in to your account
           </p>
