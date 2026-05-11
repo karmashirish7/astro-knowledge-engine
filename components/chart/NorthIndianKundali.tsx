@@ -17,6 +17,7 @@ interface Props {
   lagna:                number
   planets:              Record<string, number>   // planet → ORIGINAL house number
   planetDegrees?:       Record<string, number>
+  planetRetrograde?:    Record<string, boolean>
   onHouseClick?:        (house: number) => void
   highlightAspects?:    boolean
   visualLagnaHouse?:    number                   // which original house is visual house 1 (default 1)
@@ -24,7 +25,7 @@ interface Props {
 }
 
 export default function NorthIndianKundali({
-  lagna, planets, planetDegrees = {}, onHouseClick,
+  lagna, planets, planetDegrees = {}, planetRetrograde = {}, onHouseClick,
   visualLagnaHouse = 1, onVisualLagnaChange,
 }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
@@ -161,10 +162,11 @@ export default function NorthIndianKundali({
 
               {/* Planets */}
               {ps.map((planet, pi) => {
-                const deg   = planetDegrees[planet]
-                const label = deg !== undefined
-                  ? `${PLANET_ABBR[planet] ?? planet.slice(0, 2)} ${deg}°`
-                  : PLANET_ABBR[planet] ?? planet.slice(0, 2)
+                const deg    = planetDegrees[planet]
+                const abbr   = PLANET_ABBR[planet] ?? planet.slice(0, 2)
+                const retro  = planetRetrograde[planet] ?? false
+                const core   = deg !== undefined ? `${abbr} ${deg}°` : abbr
+                const label  = retro ? `(${core})` : core
                 const yOffset = isALagna ? 2.5 + pi : 1.5 + pi
                 return (
                   <text

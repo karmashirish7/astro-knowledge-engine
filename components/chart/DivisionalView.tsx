@@ -20,6 +20,14 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
   const div        = hasPrecise ? computeDivisional(calc, divN) : null
   const selected   = VARGAS.find(v => v.n === divN) ?? VARGAS[4]
 
+  // Retrograde is a property of the planet's actual motion — same across all vargas
+  const retrograde: Record<string, boolean> = hasPrecise
+    ? Object.fromEntries(
+        Object.entries(calc.planets as Record<string, any>)
+          .map(([p, v]: [string, any]) => [p, (v.speed ?? 0) < 0])
+      )
+    : {}
+
   return (
     <div className="w-full">
       {/* Single controls row — keeps both chart columns starting at the same Y */}
@@ -55,6 +63,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
             lagna={d1Lagna}
             planets={d1Planets}
             planetDegrees={d1Degrees}
+            planetRetrograde={retrograde}
             onHouseClick={onHouseClick}
             visualLagnaHouse={visualLagnaHouse}
             onVisualLagnaChange={setVLagna}
@@ -74,6 +83,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
               lagna={div.lagna}
               planets={div.planets}
               planetDegrees={div.planetDegrees}
+              planetRetrograde={retrograde}
               visualLagnaHouse={visualLagnaHouse}
               onVisualLagnaChange={setVLagna}
             />
