@@ -189,9 +189,29 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
     birthPlace: chart.birthPlace ?? '', birthLat: String(chart.birthLat ?? ''),
     birthLon: String(chart.birthLon ?? ''), timezone: chart.timezone ?? '+05:30', gender: chart.gender ?? '',
   })
+  const [localTags, setLocalTags]       = useState<string[]>(() => { try { return JSON.parse(chart.tagsList || '[]') } catch { return [] } })
+  const [localKeywords, setLocalKws]    = useState<string[]>(() => { try { return JSON.parse(chart.keywords || '[]') } catch { return [] } })
+  const [tagInput, setTagInput]         = useState('')
+  const [kwInput,  setKwInput]          = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError]   = useState('')
   const set = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+
+  const addTag = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ',') return
+    e.preventDefault()
+    const v = tagInput.trim().replace(/,+$/, '')
+    if (v && !localTags.includes(v)) setLocalTags(t => [...t, v])
+    setTagInput('')
+  }
+  const addKw = (e: React.KeyboardEvent) => {
+    if (e.key !== 'Enter' && e.key !== ',') return
+    e.preventDefault()
+    const v = kwInput.trim().replace(/,+$/, '')
+    if (v && !localKeywords.includes(v)) setLocalKws(k => [...k, v])
+    setKwInput('')
+  }
+
   const save = async () => {
     if (!form.name.trim()) { setError('Name is required'); return }
     setSaving(true); setError('')
@@ -201,7 +221,10 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
         body: JSON.stringify({
           name: form.name.trim(), birthDate: form.birthDate || undefined, birthTime: form.birthTime || undefined,
           birthPlace: form.birthPlace || undefined, birthLat: form.birthLat ? parseFloat(form.birthLat) : undefined,
-          birthLon: form.birthLon ? parseFloat(form.birthLon) : undefined, timezone: form.timezone || undefined, gender: form.gender || undefined,
+          birthLon: form.birthLon ? parseFloat(form.birthLon) : undefined, timezone: form.timezone || undefined,
+          gender: form.gender || undefined,
+          tagsList: JSON.stringify(localTags),
+          keywords: JSON.stringify(localKeywords),
         }),
       })
       const data = await res.json()
@@ -241,6 +264,42 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
               <option value="female">Female</option><option value="other">Other</option>
             </select>
           </div>
+          {/* Tags */}
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Tags</label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {localTags.map(t => (
+                <span key={t} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                  style={{ background: '#10B98118', color: '#10B981', border: '1px solid #10B98130' }}>
+                  {t}
+                  <button onClick={() => setLocalTags(ts => ts.filter(x => x !== t))} className="leading-none opacity-70 hover:opacity-100">×</button>
+                </span>
+              ))}
+            </div>
+            <input value={tagInput} onChange={e => setTagInput(e.target.value)} onKeyDown={addTag}
+              placeholder="Type tag and press Enter…"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </div>
+
+          {/* Keywords */}
+          <div>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Keywords</label>
+            <div className="flex flex-wrap gap-1.5 mb-1.5">
+              {localKeywords.map(k => (
+                <span key={k} className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold"
+                  style={{ background: '#7C3AED18', color: '#A78BFA', border: '1px solid #7C3AED30' }}>
+                  {k}
+                  <button onClick={() => setLocalKws(ks => ks.filter(x => x !== k))} className="leading-none opacity-70 hover:opacity-100">×</button>
+                </span>
+              ))}
+            </div>
+            <input value={kwInput} onChange={e => setKwInput(e.target.value)} onKeyDown={addKw}
+              placeholder="Type keyword and press Enter…"
+              className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+              style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+          </div>
+
           {error && <p className="text-xs" style={{ color: '#EF4444' }}>{error}</p>}
         </div>
         <div className="flex items-center justify-end gap-2 px-5 py-4 border-t" style={{ borderColor: 'var(--border)' }}>
@@ -778,7 +837,12 @@ export default function ChartDetailPage() {
 
       {editOpen && (
         <EditChartModal chart={{ ...chart, id }} onClose={() => setEditOpen(false)}
-          onSaved={updated => { setChart(updated); setEditOpen(false) }} />
+          onSaved={updated => {
+            setChart(updated)
+            setTags((() => { try { return JSON.parse(updated.tagsList || '[]') } catch { return [] } })())
+            setKeywords((() => { try { return JSON.parse(updated.keywords || '[]') } catch { return [] } })())
+            setEditOpen(false)
+          }} />
       )}
     </div>
   )
