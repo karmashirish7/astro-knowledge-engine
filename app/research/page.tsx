@@ -6,6 +6,7 @@ import { Search, Plus, Zap, BookOpen, Filter } from 'lucide-react'
 import ChartPreviewCard from '@/components/research/ChartPreviewCard'
 
 const PLANETS   = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu']
+const VIMSH_LORDS = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','Rahu','Ketu']
 const SIGNS     = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']
 const NAKS      = ['Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra','Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni','Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha','Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha','Purva Bhadrapada','Uttara Bhadrapada','Revati']
 const DIVISIONS = ['D1','D2','D3','D4','D7','D9','D10','D12','D16','D20','D24','D27','D60']
@@ -261,14 +262,20 @@ function CondRowUI({ row, onChange, onRemove }: {
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function ResearchPage() {
-  const [rows,    setRows]    = useState<CondRow[]>([newRow()])
-  const [logic,   setLogic]   = useState<'AND' | 'OR'>('AND')
-  const [results, setResults] = useState<any[]>([])
-  const [total,   setTotal]   = useState<number | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [dictums, setDictums] = useState<any[]>([])
-  const [dictumSearch, setDS] = useState('')
-  const [tab,     setTab]     = useState<'builder' | 'dictum'>('builder')
+  const [rows,       setRows]    = useState<CondRow[]>([newRow()])
+  const [logic,      setLogic]   = useState<'AND' | 'OR'>('AND')
+  const [results,    setResults] = useState<any[]>([])
+  const [total,      setTotal]   = useState<number | null>(null)
+  const [loading,    setLoading] = useState(false)
+  const [dictums,    setDictums] = useState<any[]>([])
+  const [dictumSearch, setDS]    = useState('')
+  const [tab,        setTab]     = useState<'builder' | 'dictum' | 'keyword' | 'dasha'>('builder')
+  // keyword search
+  const [kwQuery,    setKwQuery] = useState('')
+  // dasha search
+  const [dashaLD,    setDashaLD] = useState('') // mahadasha planet
+  const [dashaAD,    setDashaAD] = useState('') // antardasha planet (optional)
+  const [dashaDate,  setDashaDate] = useState(new Date().toISOString().slice(0, 10))
 
   useEffect(() => {
     fetch('/api/dictums').then(r => r.json()).then(d => setDictums(Array.isArray(d) ? d : []))
@@ -294,6 +301,32 @@ export default function ResearchPage() {
     }
   }, [rows, logic])
 
+  const runKeyword = useCallback(async () => {
+    if (!kwQuery.trim()) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/research/keywords', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: kwQuery.trim() }),
+      })
+      const data = await res.json()
+      setResults(data.charts ?? []); setTotal(data.total ?? 0)
+    } finally { setLoading(false) }
+  }, [kwQuery])
+
+  const runDasha = useCallback(async () => {
+    if (!dashaLD) return
+    setLoading(true)
+    try {
+      const res = await fetch('/api/research/dasha', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mahadasha: dashaLD, antardasha: dashaAD || undefined, date: dashaDate }),
+      })
+      const data = await res.json()
+      setResults(data.charts ?? []); setTotal(data.total ?? 0)
+    } finally { setLoading(false) }
+  }, [dashaLD, dashaAD, dashaDate])
+
   const filteredDictums = dictums.filter(d =>
     !dictumSearch || d.rule.toLowerCase().includes(dictumSearch.toLowerCase())
   )
@@ -317,20 +350,90 @@ export default function ResearchPage() {
           <div className="lg:col-span-1">
             <div className="rounded-xl p-4" style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)' }}>
               {/* Tab toggle */}
-              <div className="flex gap-1 mb-4 rounded-lg p-1" style={{ background: 'var(--bg-hover)' }}>
-                {(['builder', 'dictum'] as const).map(t => (
+              <div className="flex gap-1 mb-4 rounded-lg p-1 flex-wrap" style={{ background: 'var(--bg-hover)' }}>
+                {([
+                  ['builder', 'Query Builder'],
+                  ['dictum',  'Dictum'],
+                  ['keyword', 'Keywords'],
+                  ['dasha',   'Dasha'],
+                ] as const).map(([t, label]) => (
                   <button key={t} onClick={() => setTab(t)}
-                    className="flex-1 py-1.5 rounded-md text-xs font-medium transition-colors capitalize"
+                    className="flex-1 py-1.5 rounded-md text-xs font-medium transition-colors"
                     style={{
                       background: tab === t ? 'var(--bg-card)' : 'transparent',
                       color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+                      minWidth: 60,
                     }}>
-                    {t === 'builder' ? 'Query Builder' : 'From Dictum'}
+                    {label}
                   </button>
                 ))}
               </div>
 
-              {tab === 'builder' ? (
+              {tab === 'keyword' ? (
+                <>
+                  <p className="text-xs mb-2" style={{ color: 'var(--text-muted)' }}>
+                    Search chart names, birth places, tags and keywords.
+                  </p>
+                  <div className="relative mb-3">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+                    <input
+                      value={kwQuery} onChange={e => setKwQuery(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && runKeyword()}
+                      placeholder="e.g. career, Kathmandu, yoga…"
+                      className="w-full pl-9 pr-3 py-2.5 rounded-lg text-sm outline-none"
+                      style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}
+                    />
+                  </div>
+                  <button onClick={runKeyword} disabled={loading || !kwQuery.trim()}
+                    className="w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                    style={{ background: '#7C3AED', color: '#fff', opacity: loading || !kwQuery.trim() ? 0.5 : 1 }}>
+                    <Search className="w-4 h-4" />
+                    {loading ? 'Searching…' : 'Search'}
+                  </button>
+                </>
+              ) : tab === 'dasha' ? (
+                <>
+                  <p className="text-xs mb-3" style={{ color: 'var(--text-muted)' }}>
+                    Find charts running a specific Vimshottari dasha on a given date.
+                  </p>
+
+                  <div className="space-y-3 mb-4">
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Mahadasha Lord *</label>
+                      <select value={dashaLD} onChange={e => setDashaLD(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                        <option value="">— Select planet —</option>
+                        {VIMSH_LORDS.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Antardasha Lord <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>(optional)</span></label>
+                      <select value={dashaAD} onChange={e => setDashaAD(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }}>
+                        <option value="">— Any —</option>
+                        {VIMSH_LORDS.map(p => <option key={p} value={p}>{p}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--text-muted)' }}>Reference Date</label>
+                      <input type="date" value={dashaDate} onChange={e => setDashaDate(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg text-sm outline-none"
+                        style={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
+                    </div>
+                  </div>
+
+                  <button onClick={runDasha} disabled={loading || !dashaLD}
+                    className="w-full py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2"
+                    style={{ background: '#7C3AED', color: '#fff', opacity: loading || !dashaLD ? 0.5 : 1 }}>
+                    <Zap className="w-4 h-4" />
+                    {loading ? 'Searching…' : `Find ${dashaLD || '?'} MD charts`}
+                  </button>
+                </>
+              ) : tab === 'builder' ? (
                 <>
                   {/* Logic toggle */}
                   <div className="flex items-center gap-2 mb-3">
@@ -424,6 +527,12 @@ export default function ResearchPage() {
                   <p className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>
                     {loading ? 'Searching…' : `${total} chart${total !== 1 ? 's' : ''} match`}
                   </p>
+                  {tab === 'dasha' && dashaLD && !loading && (
+                    <span className="text-xs px-2 py-1 rounded-full font-semibold"
+                      style={{ background: '#7C3AED22', color: '#A78BFA', border: '1px solid #7C3AED33' }}>
+                      {dashaLD} MD{dashaAD ? ` / ${dashaAD} AD` : ''} · {dashaDate}
+                    </span>
+                  )}
                 </div>
                 {results.length === 0 && !loading ? (
                   <div className="text-center py-16">
