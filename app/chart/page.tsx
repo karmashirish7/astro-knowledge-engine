@@ -10,6 +10,7 @@ import {
 import DivisionalView from '@/components/chart/DivisionalView'
 import Modal from '@/components/ui/Modal'
 import { searchCities, type City } from '@/lib/cities'
+import { adToBs, bsToAd, bsMonthDays, BS_MONTH_NAMES, BS_MIN_YEAR, BS_MAX_YEAR } from '@/lib/bs-calendar'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -409,6 +410,119 @@ function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
   )
 }
 
+// ── BS Date Picker ─────────────────────────────────────────────────────────
+
+function BsDatePicker({ adValue, onAdChange }: {
+  adValue: string           // "YYYY-MM-DD" AD value (the form's source of truth)
+  onAdChange: (iso: string) => void
+}) {
+  // Derive BS from AD whenever adValue changes
+  const bsFromAd = (iso: string) => {
+    if (!iso) return { year: 2050, month: 1, day: 1 }
+    try {
+      const [y, m, d] = iso.split('-').map(Number)
+      return adToBs(new Date(Date.UTC(y, m - 1, d)))
+    } catch { return { year: 2050, month: 1, day: 1 } }
+  }
+
+  const [bs, setBs] = useState(() => bsFromAd(adValue))
+  const [yearInput, setYearInput] = useState(String(bs.year))
+
+  // Sync when parent AD value changes externally
+  useEffect(() => {
+    if (!adValue) return
+    try {
+      const next = bsFromAd(adValue)
+      setBs(next)
+      setYearInput(String(next.year))
+    } catch {}
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [adValue])
+
+  const maxDay = (() => {
+    try { return bsMonthDays(bs.year, bs.month) } catch { return 30 }
+  })()
+
+  const pushToAd = (year: number, month: number, day: number) => {
+    try {
+      const ad = bsToAd(year, month, Math.min(day, bsMonthDays(year, month)))
+      const iso = `${ad.getUTCFullYear()}-${String(ad.getUTCMonth() + 1).padStart(2, '0')}-${String(ad.getUTCDate()).padStart(2, '0')}`
+      onAdChange(iso)
+    } catch {}
+  }
+
+  const handleYear = (v: string) => {
+    setYearInput(v)
+    const y = parseInt(v)
+    if (isNaN(y) || y < BS_MIN_YEAR || y > BS_MAX_YEAR) return
+    const next = { ...bs, year: y }
+    setBs(next)
+    pushToAd(next.year, next.month, next.day)
+  }
+
+  const handleMonth = (m: number) => {
+    const next = { ...bs, month: m }
+    setBs(next)
+    pushToAd(next.year, next.month, next.day)
+  }
+
+  const handleDay = (v: string) => {
+    const d = parseInt(v)
+    if (isNaN(d) || d < 1 || d > maxDay) return
+    const next = { ...bs, day: d }
+    setBs(next)
+    pushToAd(next.year, next.month, next.day)
+  }
+
+  const inputCls = "px-2.5 py-2.5 rounded-lg text-sm outline-none font-mono"
+  const inputSty = { background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }
+
+  return (
+    <div>
+      <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+        Birth Date <span className="font-mono" style={{ color: '#F59E0B' }}>BS</span>
+        <span className="ml-1 text-[10px]" style={{ color: 'var(--text-muted)' }}>(Bikram Sambat · auto-syncs with AD)</span>
+      </label>
+      <div className="grid grid-cols-3 gap-2">
+        {/* Year */}
+        <div>
+          <input
+            type="number" min={BS_MIN_YEAR} max={BS_MAX_YEAR}
+            value={yearInput}
+            onChange={e => handleYear(e.target.value)}
+            className={`w-full ${inputCls}`} style={inputSty}
+            placeholder="2050"
+          />
+          <p className="text-[9px] mt-0.5 text-center" style={{ color: 'var(--text-muted)' }}>Year</p>
+        </div>
+        {/* Month */}
+        <div>
+          <select
+            value={bs.month}
+            onChange={e => handleMonth(Number(e.target.value))}
+            className={`w-full ${inputCls} cursor-pointer`} style={inputSty}
+          >
+            {BS_MONTH_NAMES.map((name, i) => (
+              <option key={i + 1} value={i + 1}>{i + 1} · {name}</option>
+            ))}
+          </select>
+          <p className="text-[9px] mt-0.5 text-center" style={{ color: 'var(--text-muted)' }}>Month</p>
+        </div>
+        {/* Day */}
+        <div>
+          <input
+            type="number" min={1} max={maxDay}
+            value={bs.day}
+            onChange={e => handleDay(e.target.value)}
+            className={`w-full ${inputCls}`} style={inputSty}
+          />
+          <p className="text-[9px] mt-0.5 text-center" style={{ color: 'var(--text-muted)' }}>Day (max {maxDay})</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ── New Chart Modal ────────────────────────────────────────────────────────
 
 function NewChartModal({ open, onClose, onSaved }: {
@@ -497,7 +611,9 @@ function NewChartModal({ open, onClose, onSaved }: {
         {/* Date + Time */}
         <div className="grid grid-cols-2 gap-2">
           <div>
-            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Birth Date</label>
+            <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>
+              Birth Date <span className="font-mono" style={{ color: 'var(--text-muted)' }}>AD</span>
+            </label>
             <input type="date" value={form.birthDate} onChange={f('birthDate')}
               className="w-full px-3 py-2.5 rounded-lg text-sm outline-none"
               style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
@@ -509,6 +625,12 @@ function NewChartModal({ open, onClose, onSaved }: {
               style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)', color: 'var(--text-primary)' }} />
           </div>
         </div>
+
+        {/* BS Date Picker — auto-syncs with AD field above */}
+        <BsDatePicker
+          adValue={form.birthDate}
+          onAdChange={iso => setForm(prev => ({ ...prev, birthDate: iso }))}
+        />
 
         {/* City search */}
         <CitySearch onSelect={handleCitySelect} />
