@@ -1,4 +1,4 @@
-// Swiss Ephemeris — geocentric, Lahiri sidereal, mean nodes
+// Swiss Ephemeris — geocentric, Lahiri sidereal, true nodes
 // require() is inside calculateChart (not module scope) so Next.js static
 // analysis never freezes sw=null at import time.
 
@@ -85,13 +85,18 @@ export function calculateChart(params: {
     planets[key] = { ...parseLon(r.longitude), speed: r.longitudeSpeed ?? 0 }
   }
 
-  const rahuR = sw.swe_calc_ut(jd, sw.SE_MEAN_NODE, FLAGS)
+  // True node (oscillating node) — more astronomically precise than mean node
+  const rahuR = sw.swe_calc_ut(jd, sw.SE_TRUE_NODE, FLAGS)
   if (rahuR.error) throw new Error(`Swiss Ephemeris error for Rahu: ${rahuR.error}`)
   planets['Rahu'] = { ...parseLon(rahuR.longitude),       speed: rahuR.longitudeSpeed ?? 0 }
   planets['Ketu'] = { ...parseLon(rahuR.longitude + 180), speed: -(rahuR.longitudeSpeed ?? 0) }
 
-  const h        = sw.swe_houses_ex(jd, sw.SEFLG_SIDEREAL, lat, lon, 80)
-  const lagna    = parseLon(h.ascendant)
+  // SEFLG_SWIEPH must be included alongside SEFLG_SIDEREAL so that nutation is
+  // applied consistently with how planet longitudes are computed.  Without it,
+  // swe_houses_ex uses a different (non-nutated) obliquity and the ascendant
+  // ends up ~20' short of the expected value.
+  const h     = sw.swe_houses_ex(jd, sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL, lat, lon, 80)
+  const lagna = parseLon(h.ascendant)
   const lagnaSign = lagna.signNumber
 
   const houseNumbers: Record<string, number> = {}
