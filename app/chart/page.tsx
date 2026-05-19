@@ -39,9 +39,8 @@ const parseArr = (s: string): string[] => { try { return JSON.parse(s || '[]') }
 
 function ChartCard({ chart, active, onClick, onDelete, onEdit }: { chart: any; active: boolean; onClick: () => void; onDelete: () => void; onEdit: () => void }) {
   const tags = parseArr(chart.tagsList)
-  const calc = parseJ(chart.calculatedPositions)
-  const lagnaSign = calc?.lagnaSign ? RASHIS[calc.lagnaSign - 1] : null
-  const moonSign  = calc?.planets?.Moon?.sign ?? null
+  const lagnaNum  = parseInt(chart.lagna)
+  const lagnaSign = lagnaNum >= 1 && lagnaNum <= 12 ? RASHIS[lagnaNum - 1] : null
 
   return (
     <motion.div
@@ -63,18 +62,11 @@ function ChartCard({ chart, active, onClick, onDelete, onEdit }: { chart: any; a
               {chart.birthPlace ? ` · ${chart.birthPlace}` : ''}
             </p>
           )}
-          {(lagnaSign || moonSign) && (
-            <div className="flex gap-2 mt-1.5">
-              {lagnaSign && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: '#10B98118', color: '#10B981' }}>
-                  {lagnaSign}
-                </span>
-              )}
-              {moonSign && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: '#C8D4E018', color: '#C8D4E0' }}>
-                  ☽ {moonSign}
-                </span>
-              )}
+          {lagnaSign && (
+            <div className="mt-1.5">
+              <span className="text-[10px] px-1.5 py-0.5 rounded font-medium" style={{ background: '#10B98118', color: '#10B981' }}>
+                {lagnaSign}
+              </span>
             </div>
           )}
           {tags.length > 0 && (
@@ -831,9 +823,18 @@ export default function ChartPage() {
     return () => obs.disconnect()
   }, [load])
 
-  const selectChart = (c: any) => {
+  const [selectedLoading, setSelectedLoading] = useState(false)
+
+  const selectChart = async (c: any) => {
     setSelected(c); setHousePanel(null); setReading(null); setRE(null)
     setMP({}); setML(parseInt(c.lagna) || 1)
+    setSelectedLoading(true)
+    try {
+      const full = await fetch(`/api/chart/${c.id}`).then(r => r.json())
+      if (full?.id) { setSelected(full); setML(parseInt(full.lagna) || 1) }
+    } finally {
+      setSelectedLoading(false)
+    }
   }
 
   // Derived state
@@ -954,7 +955,11 @@ export default function ChartPage() {
 
       {/* ── CENTER: Kundali ───────────────────────────────────────────────── */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {!selected ? (
+        {selected && selectedLoading ? (
+          <div className="flex-1 flex items-center justify-center">
+            <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Loading chart…</p>
+          </div>
+        ) : !selected ? (
           /* Empty state */
           <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
             <div className="w-24 h-24 rounded-3xl flex items-center justify-center"

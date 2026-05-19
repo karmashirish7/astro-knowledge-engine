@@ -20,8 +20,13 @@ export async function GET(req: NextRequest) {
       orderBy: { updatedAt: 'desc' },
       take: limit,
       skip: offset,
+      select: {
+        id: true, name: true, gender: true,
+        birthDate: true, birthTime: true, birthPlace: true,
+        lagna: true, tagsList: true,
+      },
     })
-    return NextResponse.json(withPlanetsMany(charts))
+    return NextResponse.json(charts)
   } catch {
     return NextResponse.json({ error: 'Failed to fetch charts' }, { status: 500 })
   }
