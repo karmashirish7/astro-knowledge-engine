@@ -18,7 +18,6 @@ export async function GET(req: NextRequest) {
     const charts = await prisma.chart.findMany({
       where: { userId: session.user.id },
       orderBy: { updatedAt: 'desc' },
-      include: { planetaryData: true },
       take: limit,
       skip: offset,
     })
