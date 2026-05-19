@@ -189,8 +189,8 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
     birthPlace: chart.birthPlace ?? '', birthLat: String(chart.birthLat ?? ''),
     birthLon: String(chart.birthLon ?? ''), timezone: chart.timezone ?? '+05:30', gender: chart.gender ?? '',
   })
-  const [localTags, setLocalTags]       = useState<string[]>(() => { try { return JSON.parse(chart.tagsList || '[]') } catch { return [] } })
-  const [localKeywords, setLocalKws]    = useState<string[]>(() => { try { return JSON.parse(chart.keywords || '[]') } catch { return [] } })
+  const [localTags, setLocalTags]       = useState<string[]>(() => { try { const p = JSON.parse(chart.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })
+  const [localKeywords, setLocalKws]    = useState<string[]>(() => { try { const p = JSON.parse(chart.keywords  || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })
   const [tagInput, setTagInput]         = useState('')
   const [kwInput,  setKwInput]          = useState('')
   const [saving, setSaving] = useState(false)
@@ -514,8 +514,8 @@ export default function ChartDetailPage() {
     const data = await fetch(`/api/chart/${id}`).then(r => r.json())
     if (data.error) { router.push('/chart'); return }
     setChart(data)
-    setTags((() => { try { return JSON.parse(data.tagsList || '[]') } catch { return [] } })())
-    setKeywords((() => { try { return JSON.parse(data.keywords || '[]') } catch { return [] } })())
+    setTags((() => { try { const p = JSON.parse(data.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })())
+    setKeywords((() => { try { const p = JSON.parse(data.keywords  || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })())
     const noteMap: Record<string, string> = {}
     const customs: string[] = []
     for (const n of (data.chartNotes || [])) {
@@ -839,8 +839,8 @@ export default function ChartDetailPage() {
         <EditChartModal chart={{ ...chart, id }} onClose={() => setEditOpen(false)}
           onSaved={updated => {
             setChart(updated)
-            setTags((() => { try { return JSON.parse(updated.tagsList || '[]') } catch { return [] } })())
-            setKeywords((() => { try { return JSON.parse(updated.keywords || '[]') } catch { return [] } })())
+            setTags((() => { try { const p = JSON.parse(updated.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })())
+            setKeywords((() => { try { const p = JSON.parse(updated.keywords  || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })())
             setEditOpen(false)
           }} />
       )}

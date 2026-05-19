@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
         const cur  = getCurrentDasha(tree, refDate)
         if (!cur) continue
 
-        if (cur.mahadasha !== mahadasha) continue
-        if (antardasha && cur.antardasha !== antardasha) continue
+        if (cur.mahadasha.planet !== mahadasha) continue
+        if (antardasha && cur.antardasha.planet !== antardasha) continue
 
         matched.push({
           ...chart,
