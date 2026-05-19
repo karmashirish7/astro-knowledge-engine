@@ -20,12 +20,13 @@ export interface PlanetPosition {
 }
 
 export interface ChartPositions {
-  jd:          number
-  ayanamsa:    number
-  lagna:       PlanetPosition
-  lagnaSign:   number
-  planets:     Record<string, PlanetPosition>
+  jd:           number
+  ayanamsa:     number
+  lagna:        PlanetPosition
+  lagnaSign:    number
+  planets:      Record<string, PlanetPosition>
   houseNumbers: Record<string, number>
+  porphyryCusps: number[]  // 12 sidereal cusp longitudes for Sripati Bhav Chalit (house 1–12)
 }
 
 function parseLon(lon: number): PlanetPosition {
@@ -91,10 +92,10 @@ export function calculateChart(params: {
   planets['Rahu'] = { ...parseLon(rahuR.longitude),       speed: rahuR.longitudeSpeed ?? 0 }
   planets['Ketu'] = { ...parseLon(rahuR.longitude + 180), speed: -(rahuR.longitudeSpeed ?? 0) }
 
-  // SEFLG_SWIEPH must be included alongside SEFLG_SIDEREAL so that nutation is
-  // applied consistently with how planet longitudes are computed.  Without it,
-  // swe_houses_ex uses a different (non-nutated) obliquity and the ascendant
-  // ends up ~20' short of the expected value.
+  // Sidereal ascendant via SE_SIDM_LAHIRI (SwissEph 2.09, IAU 2006 precession).
+  // SE_SIDM_LAHIRI places Spica at 0° Libra using a mean (polynomial) formula.
+  // Some traditional Indian/Nepali almanac software uses a slightly different
+  // Lahiri definition (~20' lower ayanamsa) which will give a ~20' higher ascendant.
   const h     = sw.swe_houses_ex(jd, sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL, lat, lon, 80)
   const lagna = parseLon(h.ascendant)
   const lagnaSign = lagna.signNumber
@@ -104,5 +105,10 @@ export function calculateChart(params: {
     houseNumbers[key] = ((planets[key].signNumber - lagnaSign + 12) % 12) + 1
   }
 
-  return { jd, ayanamsa, lagna, lagnaSign, planets, houseNumbers }
+  // Porphyry cusps (Sripati Paddhati) — each cusp is the Bhav Madhya (midpoint of house).
+  // ASCII 79 = 'O' selects Porphyrius in Swiss Ephemeris.
+  const hP          = sw.swe_houses_ex(jd, sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL, lat, lon, 79)
+  const porphyryCusps: number[] = Array.from({ length: 12 }, (_, i) => hP.house[i + 1] as number)
+
+  return { jd, ayanamsa, lagna, lagnaSign, planets, houseNumbers, porphyryCusps }
 }
