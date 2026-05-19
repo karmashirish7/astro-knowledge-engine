@@ -126,6 +126,10 @@ model Chart {
   name       String
   gender     String   @default("")
 
+  // Owner
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
   // Birth details
   birthDate  String   @default("")
   birthTime  String   @default("")
@@ -256,6 +260,8 @@ model User {
   password  String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  charts    Chart[]
 
   @@map("users")
 }

@@ -3,15 +3,20 @@ import { prisma } from '@/lib/db'
 import { calculateChart, parseTimezone, localToUTC } from '@/lib/astrology'
 import { flattenToPlanetaryData } from '@/lib/planetary-data'
 import { withPlanets, withPlanetsMany } from '@/lib/chart-response'
+import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { searchParams } = new URL(req.url)
     const limit  = Math.min(parseInt(searchParams.get('limit')  || '15'), 50)
     const offset = Math.max(parseInt(searchParams.get('offset') || '0'),   0)
     const charts = await prisma.chart.findMany({
+      where: { userId: session.user.id },
       orderBy: { updatedAt: 'desc' },
       include: { planetaryData: true },
       take: limit,
@@ -24,6 +29,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const body = await req.json()
     const {
@@ -52,6 +60,7 @@ export async function POST(req: NextRequest) {
 
     const chart = await prisma.chart.create({
       data: {
+        userId:              session.user.id,
         name,
         gender:              gender     || '',
         birthDate:           birthDate  || '',

@@ -3,10 +3,14 @@ import { prisma } from '@/lib/db'
 import { calculateChart, parseTimezone, localToUTC } from '@/lib/astrology'
 import { flattenToPlanetaryData } from '@/lib/planetary-data'
 import { withPlanets } from '@/lib/chart-response'
+import { auth } from '@/lib/auth'
 
 export const dynamic = 'force-dynamic'
 
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { id } = await params
     const chart = await prisma.chart.findUnique({
@@ -17,6 +21,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
       },
     })
     if (!chart) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (chart.userId && chart.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     return NextResponse.json(withPlanets(chart))
   } catch {
     return NextResponse.json({ error: 'Failed to fetch chart' }, { status: 500 })
@@ -24,12 +31,18 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 }
 
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { id } = await params
     const body   = await req.json()
 
     const current = await prisma.chart.findUnique({ where: { id } })
     if (!current) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (current.userId && current.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const lat  = body.birthLat  ?? current.birthLat
     const lon  = body.birthLon  ?? current.birthLon
@@ -99,8 +112,16 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
 }
 
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   try {
     const { id } = await params
+    const chart = await prisma.chart.findUnique({ where: { id } })
+    if (!chart) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    if (chart.userId && chart.userId !== session.user.id) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await prisma.chart.delete({ where: { id } })
     return NextResponse.json({ success: true })
   } catch {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/db'
 import Anthropic from '@anthropic-ai/sdk'
+import { auth } from '@/lib/auth'
 
 const HOUSE_NAMES = [
   'Lagna', 'Dhana', 'Sahaja', 'Sukha', 'Putra', 'Ripu',
@@ -12,6 +13,9 @@ const RASHIS = [
 ]
 
 export async function POST(req: NextRequest) {
+  const session = await auth()
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return NextResponse.json(
       { error: 'ANTHROPIC_API_KEY is not set. Add it to your .env file to use AI readings.' },
@@ -21,6 +25,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const { chartId, planets, lagna } = await req.json()
+
+    if (chartId) {
+      const chart = await prisma.chart.findUnique({ where: { id: chartId }, select: { userId: true } })
+      if (!chart) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (chart.userId && chart.userId !== session.user.id) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
     const planetEntries = Object.entries(planets as Record<string, number>)
 
     if (planetEntries.length === 0) {
