@@ -33,7 +33,7 @@ const EMPTY_FORM = {
 // ── Helpers ────────────────────────────────────────────────────────────────
 
 const parseJ = (s: string, fallback: any = {}) => { try { return JSON.parse(s || '{}') } catch { return fallback } }
-const parseArr = (s: string): string[] => { try { return JSON.parse(s || '[]') } catch { return [] } }
+const parseArr = (s: string): string[] => { try { const p = JSON.parse(s || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } }
 
 // ── Chart List Card ────────────────────────────────────────────────────────
 

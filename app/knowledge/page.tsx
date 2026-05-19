@@ -101,7 +101,7 @@ function KnowledgeContent() {
     setEditOpen(true)
   }
 
-  const tags = (raw: string) => { try { return JSON.parse(raw) } catch { return [] } }
+  const tags = (raw: string) => { try { const p = JSON.parse(raw); return Array.isArray(p) ? p : [] } catch { return [] } }
 
   const EntryForm = () => (
     <div className="space-y-4">

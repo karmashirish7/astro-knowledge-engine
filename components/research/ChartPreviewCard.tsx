@@ -34,7 +34,7 @@ export default function ChartPreviewCard({ chart, matchPct, dictumId, showExpand
   const [expanded, setExpanded] = useState(false)
 
   const pd   = chart.planetaryData
-  const tags: string[] = (() => { try { return JSON.parse(chart.tagsList || '[]') } catch { return [] } })()
+  const tags: string[] = (() => { try { const p = JSON.parse(chart.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })()
   const calc = (() => { try { return JSON.parse(chart.calculatedPositions || '{}') } catch { return {} } })()
 
   const lagnaSign    = pd ? (SIGN_LIST.indexOf(pd.ascSign) + 1) || 1 : parseInt(chart.lagna) || 1

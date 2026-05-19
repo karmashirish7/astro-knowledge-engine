@@ -225,8 +225,8 @@ export default function PlaygroundPage() {
 
   const filteredCharts = charts.filter(c => {
     if (!chartSearch) return true
-    const tags: string[] = (() => { try { return JSON.parse(c.tagsList || '[]') } catch { return [] } })()
-    const kws: string[]  = (() => { try { return JSON.parse(c.keywords  || '[]') } catch { return [] } })()
+    const tags: string[] = (() => { try { const p = JSON.parse(c.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })()
+    const kws: string[]  = (() => { try { const p = JSON.parse(c.keywords  || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })()
     const q = chartSearch.toLowerCase()
     return c.name.toLowerCase().includes(q) || (c.birthPlace || '').toLowerCase().includes(q)
       || tags.some(t => t.toLowerCase().includes(q)) || kws.some(k => k.toLowerCase().includes(q))
@@ -401,7 +401,7 @@ export default function PlaygroundPage() {
                     const planetHouses: Record<string, number> = pd
                       ? { Sun: pd.sunHouse, Moon: pd.moonHouse, Mars: pd.marsHouse, Mercury: pd.mercuryHouse, Jupiter: pd.jupiterHouse, Venus: pd.venusHouse, Saturn: pd.saturnHouse, Rahu: pd.rahuHouse, Ketu: pd.ketuHouse }
                       : (calc?.houseNumbers ?? {})
-                    const tags: string[] = (() => { try { return JSON.parse(chart.tagsList || '[]') } catch { return [] } })()
+                    const tags: string[] = (() => { try { const p = JSON.parse(chart.tagsList || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } })()
 
                     const { matched, missing, pct } = matchDictumToChart(selectedDictum, pd)
                     const isOpen = openChartIds.has(chart.id)
