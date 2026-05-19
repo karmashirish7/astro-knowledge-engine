@@ -23,6 +23,8 @@ const PLANET_LIST = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','R
 const RASHIS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']
 const HOUSE_NAMES = ['Lagna','Dhana','Sahaja','Sukha','Putra','Ripu','Yuvati','Randhra','Dharma','Karma','Labha','Vyaya']
 
+const BATCH = 15
+
 const EMPTY_FORM = {
   name: '', birthDate: '', birthTime: '', birthPlace: '',
   birthLat: '', birthLon: '', timezone: '+05:30', tags: '', keywords: '',
@@ -777,13 +779,44 @@ export default function ChartPage() {
   const [readingError, setRE]       = useState<string | null>(null)
   const [manualPlanets, setMP]      = useState<Record<string, number>>({})
   const [manualLagna, setML]        = useState(1)
+  const [hasMore, setHasMore]       = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const nextOffset = useRef(0)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const load = useCallback(async () => {
-    const data = await fetch('/api/chart').then(r => r.json())
-    setCharts(Array.isArray(data) ? data : [])
+  const load = useCallback(async (offset = 0) => {
+    if (offset === 0) {
+      nextOffset.current = 0
+      setHasMore(true)
+    }
+    setLoadingMore(true)
+    try {
+      const data = await fetch(`/api/chart?limit=${BATCH}&offset=${offset}`).then(r => r.json())
+      const batch = Array.isArray(data) ? data : []
+      setCharts(prev => offset === 0 ? batch : [...prev, ...batch])
+      setHasMore(batch.length === BATCH)
+      nextOffset.current = offset + batch.length
+    } finally {
+      setLoadingMore(false)
+    }
   }, [])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting && hasMore && !loadingMore) {
+          load(nextOffset.current)
+        }
+      },
+      { rootMargin: '120px' }
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [hasMore, loadingMore, load])
 
   const selectChart = (c: any) => {
     setSelected(c); setHousePanel(null); setReading(null); setRE(null)
@@ -889,9 +922,20 @@ export default function ChartPage() {
                 </button>
               )}
             </div>
-          ) : filtered.map(c => (
-            <ChartCard key={c.id} chart={c} active={selected?.id === c.id} onClick={() => selectChart(c)} onDelete={() => handleDeleteChart(c)} onEdit={() => setEditing(c)} />
+          ) : filtered.map((c, i) => (
+            <motion.div
+              key={c.id}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.2, delay: Math.min(i * 0.04, 0.4) }}
+            >
+              <ChartCard chart={c} active={selected?.id === c.id} onClick={() => selectChart(c)} onDelete={() => handleDeleteChart(c)} onEdit={() => setEditing(c)} />
+            </motion.div>
           ))}
+          {hasMore && <div ref={sentinelRef} className="h-4" />}
+          {loadingMore && (
+            <p className="text-center text-xs py-3" style={{ color: 'var(--text-muted)' }}>Loading…</p>
+          )}
         </div>
       </div>
 
@@ -1101,7 +1145,7 @@ export default function ChartPage() {
       <NewChartModal
         open={addOpen}
         onClose={() => setAddOpen(false)}
-        onSaved={chart => { setAddOpen(false); load().then(() => setSelected(chart)) }}
+        onSaved={chart => { setAddOpen(false); load(0).then(() => setSelected(chart)) }}
       />
 
       {editingChart && (

@@ -6,11 +6,16 @@ import { withPlanets, withPlanetsMany } from '@/lib/chart-response'
 
 export const dynamic = 'force-dynamic'
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const limit  = Math.min(parseInt(searchParams.get('limit')  || '15'), 50)
+    const offset = Math.max(parseInt(searchParams.get('offset') || '0'),   0)
     const charts = await prisma.chart.findMany({
       orderBy: { updatedAt: 'desc' },
       include: { planetaryData: true },
+      take: limit,
+      skip: offset,
     })
     return NextResponse.json(withPlanetsMany(charts))
   } catch {
