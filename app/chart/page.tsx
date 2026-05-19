@@ -779,36 +779,49 @@ export default function ChartPage() {
   const [readingError, setRE]       = useState<string | null>(null)
   const [manualPlanets, setMP]      = useState<Record<string, number>>({})
   const [manualLagna, setML]        = useState(1)
-  const [hasMore, setHasMore]       = useState(true)
+  const [hasMore, setHasMore]         = useState(true)
   const [loadingMore, setLoadingMore] = useState(false)
-  const nextOffset = useRef(0)
+  const nextOffset  = useRef(0)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Refs mirror state so the IntersectionObserver callback always reads live values
+  // without needing to be torn down and recreated on every state change.
+  const hasMoreRef  = useRef(true)
+  const loadingRef  = useRef(false)
 
   const load = useCallback(async (offset = 0) => {
+    if (loadingRef.current) return          // prevent concurrent calls
     if (offset === 0) {
-      nextOffset.current = 0
+      nextOffset.current  = 0
+      hasMoreRef.current  = true
       setHasMore(true)
     }
+    loadingRef.current = true
     setLoadingMore(true)
     try {
       const data = await fetch(`/api/chart?limit=${BATCH}&offset=${offset}`).then(r => r.json())
       const batch = Array.isArray(data) ? data : []
       setCharts(prev => offset === 0 ? batch : [...prev, ...batch])
-      setHasMore(batch.length === BATCH)
-      nextOffset.current = offset + batch.length
+      const more = batch.length === BATCH
+      hasMoreRef.current  = more
+      setHasMore(more)
+      nextOffset.current  = offset + batch.length
     } finally {
+      loadingRef.current = false
       setLoadingMore(false)
     }
   }, [])
 
   useEffect(() => { load() }, [load])
 
+  // Observer is set up once (depends only on stable `load`). It reads from refs
+  // so it never needs to be torn down/recreated — calling observe() again on an
+  // already-observed element would re-fire immediately and restart the cascade.
   useEffect(() => {
     const el = sentinelRef.current
     if (!el) return
     const obs = new IntersectionObserver(
       ([entry]) => {
-        if (entry.isIntersecting && hasMore && !loadingMore) {
+        if (entry.isIntersecting && hasMoreRef.current && !loadingRef.current) {
           load(nextOffset.current)
         }
       },
@@ -816,7 +829,7 @@ export default function ChartPage() {
     )
     obs.observe(el)
     return () => obs.disconnect()
-  }, [hasMore, loadingMore, load])
+  }, [load])
 
   const selectChart = (c: any) => {
     setSelected(c); setHousePanel(null); setReading(null); setRE(null)
