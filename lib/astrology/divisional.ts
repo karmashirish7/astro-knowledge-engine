@@ -88,6 +88,72 @@ function divisionalSign(longitude: number, n: number): number {
   }
 }
 
+// ─── Bhav Chalit (Sripati Paddhati) ────────────────────────────────────────
+//
+// Porphyry cusps are the Bhav Madhyas (house midpoints).
+// Bhav Sandhis (house boundaries) are the midpoints between adjacent Bhav Madhyas.
+// A planet's bhava is determined by which sandhi interval its longitude falls in.
+
+export interface BhavChaliData {
+  lagna:        number                   // lagnaSign 1–12 (same as D1)
+  planets:      Record<string, number>   // planet → bhava house 1–12
+  planetDegrees: Record<string, number>  // planet → degree within sign (0–29)
+  bhavMadhyas:  number[]                 // 12 cusp longitudes (sidereal)
+  bhavSandhis:  number[]                 // 12 sandhi longitudes
+}
+
+// Midpoint along the shorter forward arc from a → b on [0, 360)
+function circularMidpoint(a: number, b: number): number {
+  const forward = ((b - a) % 360 + 360) % 360
+  return ((a + forward / 2) % 360 + 360) % 360
+}
+
+// Is longitude `lon` in the half-open forward arc [start, end)?
+function inArc(lon: number, start: number, end: number): boolean {
+  const s = ((start % 360) + 360) % 360
+  const e = ((end   % 360) + 360) % 360
+  const l = ((lon   % 360) + 360) % 360
+  if (s < e) return l >= s && l < e
+  return l >= s || l < e  // arc wraps through 360°
+}
+
+export function computeBhavChalit(calc: any): BhavChaliData | null {
+  if (!Array.isArray(calc?.porphyryCusps) || calc.porphyryCusps.length !== 12) return null
+  if (!calc?.planets || typeof calc?.lagnaSign !== 'number') return null
+
+  const cusps = calc.porphyryCusps as number[]
+
+  // sandhis[i] = boundary after house (i+1) = midpoint(cusps[i], cusps[(i+1)%12])
+  const sandhis = cusps.map((c: number, i: number) =>
+    circularMidpoint(c, cusps[(i + 1) % 12])
+  )
+
+  function findBhava(lon: number): number {
+    for (let i = 0; i < 12; i++) {
+      const start = sandhis[(i + 11) % 12]  // sandhi before house i+1
+      const end   = sandhis[i]              // sandhi after  house i+1
+      if (inArc(lon, start, end)) return i + 1
+    }
+    return 1
+  }
+
+  const planets:       Record<string, number> = {}
+  const planetDegrees: Record<string, number> = {}
+
+  for (const [name, pos] of Object.entries(calc.planets as Record<string, any>)) {
+    planets[name]      = findBhava(pos.longitude as number)
+    planetDegrees[name] = Math.floor((pos.longitude as number) % 30)
+  }
+
+  return {
+    lagna:       calc.lagnaSign as number,
+    planets,
+    planetDegrees,
+    bhavMadhyas: cusps,
+    bhavSandhis: sandhis,
+  }
+}
+
 export function computeDivisional(calc: any, n: number): DivisionalData | null {
   if (typeof calc?.lagna?.longitude !== 'number' || !calc?.planets) return null
 

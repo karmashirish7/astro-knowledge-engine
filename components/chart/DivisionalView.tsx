@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import NorthIndianKundali from './NorthIndianKundali'
-import { VARGAS, computeDivisional } from '@/lib/astrology/divisional'
+import { VARGAS, computeDivisional, computeBhavChalit } from '@/lib/astrology/divisional'
 
 interface Props {
   calc:                  any
@@ -12,15 +12,25 @@ interface Props {
   onHouseClick?:         (house: number) => void
 }
 
+// 'chalit' is the special selector value for Bhav Chalit; others are stringified n values
+const SELECTOR_OPTIONS = [
+  { value: 'chalit', abbr: 'BC', name: 'Bhav Chalit' },
+  ...VARGAS.map(v => ({ value: String(v.n), abbr: v.abbr, name: v.name })),
+]
+
 export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {}, onHouseClick }: Props) {
-  const [divN, setDivN]               = useState(9)
+  const [selVal, setSelVal]           = useState('9')
   const [visualLagnaHouse, setVLagna] = useState(1)
 
-  const hasPrecise = !!(calc?.lagna?.longitude && calc?.planets)
-  const div        = hasPrecise ? computeDivisional(calc, divN) : null
-  const selected   = VARGAS.find(v => v.n === divN) ?? VARGAS[4]
+  const hasPrecise  = !!(calc?.lagna?.longitude && calc?.planets)
+  const isChalit    = selVal === 'chalit'
+  const divN        = isChalit ? null : Number(selVal)
 
-  // Retrograde is a property of the planet's actual motion — same across all vargas
+  const div        = hasPrecise && !isChalit && divN != null ? computeDivisional(calc, divN) : null
+  const chalit     = hasPrecise && isChalit ? computeBhavChalit(calc) : null
+  const selected   = SELECTOR_OPTIONS.find(o => o.value === selVal) ?? SELECTOR_OPTIONS[1]
+
+  // Retrograde follows actual planetary motion — same across all charts
   const retrograde: Record<string, boolean> = hasPrecise
     ? Object.fromEntries(
         Object.entries(calc.planets as Record<string, any>)
@@ -28,14 +38,20 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
       )
     : {}
 
+  const rightChart = isChalit ? chalit : div
+
   return (
     <div className="w-full">
-      {/* Single controls row — keeps both chart columns starting at the same Y */}
+      {/* Single controls row */}
       <div className="mb-2 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <span className="text-xs font-bold tracking-wider" style={{ color: '#A78BFA' }}>D1 · Rasi</span>
           <span className="text-xs" style={{ color: 'var(--text-muted)' }}>/</span>
-          <span className="text-xs font-bold tracking-wider" style={{ color: '#10B981' }}>{selected.abbr} · {selected.name}</span>
+          <span
+            className="text-xs font-bold tracking-wider"
+            style={{ color: isChalit ? '#F59E0B' : '#10B981' }}>
+            {selected.abbr} · {selected.name}
+          </span>
           {visualLagnaHouse !== 1 && (
             <button
               onClick={() => setVLagna(1)}
@@ -46,17 +62,17 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
           )}
         </div>
         <select
-          value={divN}
-          onChange={e => setDivN(Number(e.target.value))}
+          value={selVal}
+          onChange={e => setSelVal(e.target.value)}
           className="text-sm font-semibold px-3 py-1.5 rounded-lg outline-none cursor-pointer"
-          style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 160 }}>
-          {VARGAS.map(v => (
-            <option key={v.n} value={v.n}>{v.abbr} · {v.name}</option>
+          style={{ background: 'var(--bg-hover)', color: 'var(--text-primary)', border: '1px solid var(--border)', minWidth: 180 }}>
+          {SELECTOR_OPTIONS.map(o => (
+            <option key={o.value} value={o.value}>{o.abbr} · {o.name}</option>
           ))}
         </select>
       </div>
 
-      {/* Both charts — headers gone, so they start at exactly the same Y */}
+      {/* Both charts */}
       <div className="flex gap-4 w-full">
         <div className="flex-1 min-w-0">
           <NorthIndianKundali
@@ -78,11 +94,18 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
                 Divisional charts require precise birth data (lat/lon)
               </p>
             </div>
-          ) : div ? (
+          ) : isChalit && !chalit ? (
+            <div className="aspect-square rounded-lg flex items-center justify-center"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
+              <p className="text-xs text-center px-4" style={{ color: 'var(--text-muted)' }}>
+                Bhav Chalit requires recalculated chart data
+              </p>
+            </div>
+          ) : rightChart ? (
             <NorthIndianKundali
-              lagna={div.lagna}
-              planets={div.planets}
-              planetDegrees={div.planetDegrees}
+              lagna={rightChart.lagna}
+              planets={rightChart.planets}
+              planetDegrees={rightChart.planetDegrees}
               planetRetrograde={retrograde}
               visualLagnaHouse={visualLagnaHouse}
               onVisualLagnaChange={setVLagna}
