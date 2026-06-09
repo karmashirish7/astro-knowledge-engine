@@ -23,7 +23,7 @@ const PLANET_LIST = ['Sun','Moon','Mars','Mercury','Jupiter','Venus','Saturn','R
 const RASHIS = ['Aries','Taurus','Gemini','Cancer','Leo','Virgo','Libra','Scorpio','Sagittarius','Capricorn','Aquarius','Pisces']
 const HOUSE_NAMES = ['Lagna','Dhana','Sahaja','Sukha','Putra','Ripu','Yuvati','Randhra','Dharma','Karma','Labha','Vyaya']
 
-const BATCH = 15
+const BATCH = 50
 
 const EMPTY_FORM = {
   name: '', birthDate: '', birthTime: '', birthPlace: '',
@@ -31,6 +31,18 @@ const EMPTY_FORM = {
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
+
+const NAKSHATRA_NAMES_27 = [
+  'Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra',
+  'Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni',
+  'Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha',
+  'Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha',
+  'Purva Bhadrapada','Uttara Bhadrapada','Revati',
+]
+function getNakshatraName(lon: number): string {
+  const l = ((lon % 360) + 360) % 360
+  return NAKSHATRA_NAMES_27[Math.floor(l / (360 / 27))] ?? ''
+}
 
 const parseJ = (s: string, fallback: any = {}) => { try { return JSON.parse(s || '{}') } catch { return fallback } }
 const parseArr = (s: string): string[] => { try { const p = JSON.parse(s || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } }
@@ -221,7 +233,14 @@ function PositionsTable({ calc }: { calc: any }) {
       <div className="flex items-center px-4 py-2.5 border-b" style={{ borderColor: 'var(--border)' }}>
         <span className="text-xs font-bold w-16" style={{ color: '#10B981' }}>Lagna</span>
         <span className="text-sm font-semibold flex-1" style={{ color: 'var(--text-primary)' }}>{calc.lagna?.formatted}</span>
-        <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{RASHIS[(calc.lagnaSign ?? 1) - 1]}</span>
+        <span className="text-xs text-right" style={{ color: 'var(--text-muted)' }}>
+          {RASHIS[(calc.lagnaSign ?? 1) - 1]}
+          {(calc.lagna?.nakshatra || calc.lagna?.longitude != null) && (
+            <span className="block text-[10px] leading-tight" style={{ opacity: 0.7 }}>
+              {calc.lagna.nakshatra || getNakshatraName(calc.lagna.longitude)}
+            </span>
+          )}
+        </span>
       </div>
 
       {/* Planet rows — two-column grid */}
@@ -230,6 +249,7 @@ function PositionsTable({ calc }: { calc: any }) {
           const pos = calc.planets?.[p]
           if (!pos) return null
           const h = calc.houseNumbers?.[p]
+          const nakshatra = pos.nakshatra || (pos.longitude != null ? getNakshatraName(pos.longitude) : '')
           const isRight = i % 2 === 1
           const isLast = i >= PLANET_LIST.length - 2
           return (
@@ -243,8 +263,13 @@ function PositionsTable({ calc }: { calc: any }) {
               <span className="text-xs font-bold w-5 flex-shrink-0" style={{ color: PLANET_COLORS[p] }}>
                 {p.slice(0, 2)}
               </span>
-              <span className="text-xs flex-1 ml-2" style={{ color: 'var(--text-secondary)' }}>{pos.formatted}</span>
-              <span className="text-xs font-semibold flex-shrink-0 ml-2" style={{ color: '#7C3AED' }}>
+              <span className="text-xs flex-1 ml-2" style={{ color: 'var(--text-secondary)' }}>
+                {pos.formatted}
+                {nakshatra && (
+                  <span className="block text-[10px] leading-tight mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>{nakshatra}</span>
+                )}
+              </span>
+              <span className="text-xs font-semibold flex-shrink-0 ml-2 self-start pt-0.5" style={{ color: '#7C3AED' }}>
                 H{h}
               </span>
             </div>
@@ -766,9 +791,12 @@ export default function ChartPage() {
   const [editingChart, setEditing]  = useState<any | null>(null)
   const [addOpen, setAddOpen]       = useState(false)
   const [search, setSearch]         = useState('')
-  const [reading, setReading]       = useState<string | null>(null)
-  const [readingLoading, setRL]     = useState(false)
-  const [readingError, setRE]       = useState<string | null>(null)
+  const [readingEn, setReadingEn]         = useState<string | null>(null)
+  const [readingNp, setReadingNp]         = useState<string | null>(null)
+  const [readingLang, setReadingLang]     = useState<'en' | 'np'>('en')
+  const [readingTranslating, setTranslating] = useState(false)
+  const [readingLoading, setRL]           = useState(false)
+  const [readingError, setRE]             = useState<string | null>(null)
   const [manualPlanets, setMP]      = useState<Record<string, number>>({})
   const [manualLagna, setML]        = useState(1)
   const [hasMore, setHasMore]         = useState(true)
@@ -826,7 +854,7 @@ export default function ChartPage() {
   const [selectedLoading, setSelectedLoading] = useState(false)
 
   const selectChart = async (c: any) => {
-    setSelected(c); setHousePanel(null); setReading(null); setRE(null)
+    setSelected(c); setHousePanel(null); setReadingEn(null); setReadingNp(null); setRE(null)
     setMP({}); setML(parseInt(c.lagna) || 1)
     setSelectedLoading(true)
     try {
@@ -854,7 +882,7 @@ export default function ChartPage() {
 
   // ── House click
   const handleHouseClick = async (house: number) => {
-    setReading(null); setRE(null)
+    setReadingEn(null); setReadingNp(null); setRE(null)
     const planets = Object.entries(activePlanets).filter(([, h]) => h === house).map(([p]) => p)
     setHousePanel({ house, planets, entries: [], dictums: [] })
     if (planets.length === 0) return
@@ -867,7 +895,7 @@ export default function ChartPage() {
   // ── AI reading
   const handleReading = async () => {
     if (Object.keys(activePlanets).length === 0) return
-    setRL(true); setReading(null); setRE(null); setHousePanel(null)
+    setRL(true); setReadingEn(null); setReadingNp(null); setRE(null); setHousePanel(null); setReadingLang('en')
     try {
       const res = await fetch('/api/chart/reading', {
         method: 'POST',
@@ -876,23 +904,39 @@ export default function ChartPage() {
       })
       const data = await res.json()
       if (data.error) setRE(data.error)
-      else setReading(data.reading)
+      else setReadingEn(data.reading)
     } catch (e: any) { setRE(e.message) }
     finally { setRL(false) }
+  }
+
+  const handleTranslate = async () => {
+    if (!readingEn) return
+    if (readingNp) { setReadingLang('np'); return }
+    setTranslating(true)
+    try {
+      const res = await fetch('/api/chart/reading', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ translate_text: readingEn }),
+      })
+      const data = await res.json()
+      if (!data.error) { setReadingNp(data.reading); setReadingLang('np') }
+    } catch {}
+    finally { setTranslating(false) }
   }
 
   // ── Delete
   const handleDelete = async () => {
     if (!selected || !confirm(`Delete "${selected.name}"?`)) return
     await fetch(`/api/chart/${selected.id}`, { method: 'DELETE' })
-    setSelected(null); setHousePanel(null); setReading(null)
+    setSelected(null); setHousePanel(null); setReadingEn(null); setReadingNp(null)
     load()
   }
 
   const handleDeleteChart = async (chart: any) => {
     if (!confirm(`Delete "${chart.name}"?`)) return
     await fetch(`/api/chart/${chart.id}`, { method: 'DELETE' })
-    if (selected?.id === chart.id) { setSelected(null); setHousePanel(null); setReading(null) }
+    if (selected?.id === chart.id) { setSelected(null); setHousePanel(null); setReadingEn(null); setReadingNp(null) }
     load()
   }
 
@@ -1088,55 +1132,107 @@ export default function ChartPage() {
                   </div>
                 )}
 
-                {/* AI Reading panel */}
-                {(reading || readingLoading || readingError) && (
+                {/* AI Prediction panel */}
+                {(readingEn || readingLoading || readingError) && (
                   <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
                     className="w-full max-w-lg mt-5 rounded-xl overflow-hidden"
                     style={{ border: '1px solid #7C3AED33' }}>
+                    {/* Header */}
                     <div className="flex items-center justify-between px-4 py-3 border-b"
                       style={{ borderColor: '#7C3AED22', background: 'rgba(124,58,237,0.05)' }}>
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4" style={{ color: '#A78BFA' }} />
-                        <span className="text-sm font-semibold" style={{ color: '#A78BFA' }}>AI Chart Reading</span>
+                        <span className="text-sm font-semibold" style={{ color: '#A78BFA' }}>AI Prediction</span>
                       </div>
-                      <button onClick={() => { setReading(null); setRE(null) }}>
-                        <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-                      </button>
+                      <div className="flex items-center gap-2">
+                        {/* EN / NP language slider */}
+                        {readingEn && (
+                          <div className="flex items-center rounded-full p-0.5 text-xs"
+                            style={{ background: 'rgba(124,58,237,0.15)', border: '1px solid #7C3AED33' }}>
+                            <button
+                              onClick={() => setReadingLang('en')}
+                              className="px-2.5 py-0.5 rounded-full transition-all font-semibold"
+                              style={{
+                                background: readingLang === 'en' ? '#7C3AED' : 'transparent',
+                                color: readingLang === 'en' ? '#fff' : '#A78BFA',
+                              }}>
+                              EN
+                            </button>
+                            <button
+                              onClick={() => { if (readingLang !== 'np') handleTranslate() }}
+                              disabled={readingTranslating}
+                              className="px-2.5 py-0.5 rounded-full transition-all font-semibold disabled:opacity-60"
+                              style={{
+                                background: readingLang === 'np' ? '#7C3AED' : 'transparent',
+                                color: readingLang === 'np' ? '#fff' : '#A78BFA',
+                              }}>
+                              {readingTranslating ? '…' : 'NP'}
+                            </button>
+                          </div>
+                        )}
+                        <button onClick={() => { setReadingEn(null); setReadingNp(null); setRE(null) }}>
+                          <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Body */}
                     <div className="p-4">
                       {readingLoading && (
                         <div className="flex items-center gap-3 py-4">
                           <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Consulting your knowledge base…</p>
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Generating full chart reading…</p>
+                        </div>
+                      )}
+                      {readingTranslating && readingLang === 'np' && !readingNp && (
+                        <div className="flex items-center gap-3 py-4">
+                          <div className="w-5 h-5 border-2 border-purple-500 border-t-transparent rounded-full animate-spin flex-shrink-0" />
+                          <p className="text-sm" style={{ color: 'var(--text-muted)' }}>Translating to Nepali…</p>
                         </div>
                       )}
                       {readingError && (
                         <div className="flex items-start gap-2">
                           <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" style={{ color: '#EF4444' }} />
-                          <div>
-                            <p className="text-sm" style={{ color: '#EF4444' }}>{readingError}</p>
-                            {readingError.includes('ANTHROPIC_API_KEY') && (
-                              <p className="text-xs mt-1" style={{ color: 'var(--text-muted)' }}>
-                                Add ANTHROPIC_API_KEY=sk-ant-... to your .env file and restart.
-                              </p>
-                            )}
+                          <p className="text-sm" style={{ color: '#EF4444' }}>{readingError}</p>
+                        </div>
+                      )}
+                      {(() => {
+                        const activeReading = readingLang === 'np' ? readingNp : readingEn
+                        if (!activeReading) return null
+                        return (
+                          <div className="space-y-1">
+                            {activeReading.split('\n').map((line, i) => {
+                              if (line.startsWith('### ')) return (
+                                <p key={i} className="text-xs font-bold mt-3 first:mt-0 pb-0.5"
+                                  style={{ color: '#A78BFA', borderBottom: '1px solid #7C3AED22' }}>
+                                  {line.slice(4)}
+                                </p>
+                              )
+                              if (line.startsWith('## ')) return (
+                                <p key={i} className="text-sm font-bold mt-5 first:mt-0" style={{ color: 'var(--text-primary)' }}>
+                                  {line.slice(3)}
+                                </p>
+                              )
+                              if (line.startsWith('# ')) return (
+                                <p key={i} className="text-base font-bold mt-4 first:mt-0" style={{ color: 'var(--text-primary)' }}>
+                                  {line.slice(2)}
+                                </p>
+                              )
+                              if (line.startsWith('- ') || line.startsWith('• ')) return (
+                                <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-secondary)' }}>
+                                  <span style={{ color: '#7C3AED' }}>•</span>{line.slice(2)}
+                                </p>
+                              )
+                              if (!line.trim()) return <div key={i} className="h-1.5" />
+                              return (
+                                <p key={i} className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>
+                                  {line}
+                                </p>
+                              )
+                            })}
                           </div>
-                        </div>
-                      )}
-                      {reading && (
-                        <div className="space-y-1">
-                          {reading.split('\n').map((line, i) => {
-                            if (line.startsWith('## ')) return <p key={i} className="text-sm font-bold mt-4 first:mt-0" style={{ color: 'var(--text-primary)' }}>{line.slice(3)}</p>
-                            if (line.startsWith('# '))  return <p key={i} className="text-base font-bold mt-4 first:mt-0" style={{ color: 'var(--text-primary)' }}>{line.slice(2)}</p>
-                            if (line.startsWith('- ') || line.startsWith('• '))
-                              return <p key={i} className="text-xs flex gap-2" style={{ color: 'var(--text-secondary)' }}>
-                                <span style={{ color: '#7C3AED' }}>•</span>{line.slice(2)}
-                              </p>
-                            if (!line.trim()) return <div key={i} className="h-1.5" />
-                            return <p key={i} className="text-xs leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{line}</p>
-                          })}
-                        </div>
-                      )}
+                        )
+                      })()}
                     </div>
                   </motion.div>
                 )}

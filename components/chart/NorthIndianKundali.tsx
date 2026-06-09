@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 
 const PLANET_COLORS: Record<string, string> = {
-  Sun: '#F59E0B', Moon: '#E2E8F0', Mars: '#EF4444',
+  Sun: '#D97706', Moon: '#475569', Mars: '#DC2626',
   Mercury: '#10B981', Jupiter: '#F97316', Venus: '#EC4899',
   Saturn: '#6366F1', Rahu: '#8B5CF6', Ketu: '#78716C',
 }
@@ -93,7 +93,7 @@ export default function NorthIndianKundali({
         viewBox="0 0 400 400"
         style={{ display: 'block', width: '100%', borderRadius: 8 }}
       >
-        <rect width={400} height={400} fill="#12121C" />
+        <rect width={400} height={400} fill="#F1F5F9" />
 
         {/* House fills + borders */}
         {Object.entries(POLYGONS).map(([h, p]) => {
@@ -109,7 +109,7 @@ export default function NorthIndianKundali({
               key={vPos}
               points={p}
               fill={fill}
-              stroke={isActualLagna ? '#EC4899' : '#3A3A52'}
+              stroke={isActualLagna ? '#EC4899' : '#CBD5E1'}
               strokeWidth={isActualLagna ? 1.5 : 1}
               style={{ cursor: 'pointer' }}
               onMouseEnter={() => setHovered(vPos)}
@@ -120,7 +120,7 @@ export default function NorthIndianKundali({
           )
         })}
 
-        <rect width={400} height={400} fill="none" stroke="#3A3A52" strokeWidth={1.5} />
+        <rect width={400} height={400} fill="none" stroke="#CBD5E1" strokeWidth={1.5} />
 
         {/* Labels */}
         {Array.from({ length: 12 }, (_, i) => i + 1).map(vPos => {
@@ -130,7 +130,7 @@ export default function NorthIndianKundali({
           const isVLagna = vPos === 1
           const isALagna = isRotated && vPos === actualLagnaVisualPos
 
-          const lineH      = 12
+          const lineH      = 15
           const extraLines = isALagna ? 1 : 0
           const totalLines = 1 + ps.length + extraLines
           const startY     = ly - (totalLines * lineH) / 2
@@ -142,7 +142,7 @@ export default function NorthIndianKundali({
                 <text
                   x={lx} y={startY + lineH * 0.5}
                   textAnchor="middle" dominantBaseline="middle"
-                  fill="#EC4899" fontSize={9} fontWeight="700" fontFamily="monospace"
+                  fill="#EC4899" fontSize={11} fontWeight="700" fontFamily="monospace"
                 >
                   As
                 </text>
@@ -152,9 +152,9 @@ export default function NorthIndianKundali({
               <text
                 x={lx} y={startY + lineH * (isALagna ? 1.5 : 0.5)}
                 textAnchor="middle" dominantBaseline="middle"
-                fill={isVLagna ? '#A78BFA' : '#4B5563'}
-                fontSize={isVLagna ? 12 : 11}
-                fontWeight={isVLagna ? '700' : '600'}
+                fill={isVLagna ? '#5B21B6' : '#334155'}
+                fontSize={isVLagna ? 15 : 14}
+                fontWeight={isVLagna ? '800' : '700'}
                 fontFamily="monospace"
               >
                 {signNum}
@@ -173,8 +173,8 @@ export default function NorthIndianKundali({
                     key={planet}
                     x={lx} y={startY + lineH * yOffset}
                     textAnchor="middle" dominantBaseline="middle"
-                    fill={PLANET_COLORS[planet] ?? '#94A3B8'}
-                    fontSize={10} fontWeight="700" fontFamily="monospace"
+                    fill={PLANET_COLORS[planet] ?? '#1E293B'}
+                    fontSize={12} fontWeight="800" fontFamily="monospace"
                   >
                     {label}
                   </text>
@@ -205,7 +205,7 @@ export default function NorthIndianKundali({
 
           {/* Rotate option */}
           <button
-            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left transition-colors hover:bg-white/5"
+            className="w-full flex items-center gap-2 px-3 py-2.5 text-xs font-semibold text-left transition-colors hover:bg-[var(--bg-hover)]"
             style={{ color: '#A78BFA' }}
             onClick={() => {
               const origHouse = originalHouseOf(ctxMenu.vPos)
@@ -219,7 +219,7 @@ export default function NorthIndianKundali({
           {/* Reset */}
           {isRotated && (
             <button
-              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-left transition-colors hover:bg-white/5"
+              className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-left transition-colors hover:bg-[var(--bg-hover)]"
               style={{ color: 'var(--text-muted)' }}
               onClick={() => { onVisualLagnaChange(1); setCtxMenu(null) }}
             >

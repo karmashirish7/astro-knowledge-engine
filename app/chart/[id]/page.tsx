@@ -6,7 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
-  ArrowLeft, Download, Pencil, Check, Tag, X, Plus, Trash2, ChevronDown, MapPin,
+  ArrowLeft, Download, Pencil, Check, Tag, X, Plus, Trash2, ChevronDown, MapPin, Sparkles,
 } from 'lucide-react'
 import DivisionalView from '@/components/chart/DivisionalView'
 import ObservationEntry from '@/components/charts/ObservationEntry'
@@ -39,6 +39,18 @@ const PLANET_RULED_SIGNS: Record<string, number[]> = {
   Jupiter:[9,12], Venus:[2,7], Saturn:[10,11],
   Rahu:[11],  // Aquarius (co-lord with Saturn)
   Ketu:[8],   // Scorpio (co-lord with Mars)
+}
+
+const NAKSHATRA_NAMES = [
+  'Ashwini','Bharani','Krittika','Rohini','Mrigashira','Ardra',
+  'Punarvasu','Pushya','Ashlesha','Magha','Purva Phalguni','Uttara Phalguni',
+  'Hasta','Chitra','Swati','Vishakha','Anuradha','Jyeshtha',
+  'Mula','Purva Ashadha','Uttara Ashadha','Shravana','Dhanishtha','Shatabhisha',
+  'Purva Bhadrapada','Uttara Bhadrapada','Revati',
+]
+function getNakshatra(lon: number): string {
+  const l = ((lon % 360) + 360) % 360
+  return NAKSHATRA_NAMES[Math.floor(l / (360 / 27))] ?? ''
 }
 
 const PLANET_ASPECTS: Record<string, number[]> = {
@@ -495,6 +507,7 @@ export default function ChartDetailPage() {
 
   const [chart, setChart]           = useState<any>(null)
   const [notes, setNotes]           = useState<Record<string, string>>({})
+  const notesRef                    = useRef<Record<string, string>>({})
   const [activeSection, setSection] = useState('house1')
   const [customSections, setCustom] = useState<string[]>([])
   const [saving, setSaving]         = useState(false)
@@ -505,6 +518,9 @@ export default function ChartDetailPage() {
   const [kwInput, setKwInput]       = useState('')
   const [tags, setTags]             = useState<string[]>([])
   const [keywords, setKeywords]     = useState<string[]>([])
+  const [aiPrediction, setAiPrediction] = useState<string | null>(null)
+  const [aiLoading, setAiLoading]       = useState(false)
+  const [aiError, setAiError]           = useState<string | null>(null)
 
   const currentContent   = notes[activeSection] ?? ''
   const debouncedContent = useDebounce(currentContent, 1200)
@@ -526,6 +542,8 @@ export default function ChartDetailPage() {
   }, [id, router])
 
   useEffect(() => { loadChart() }, [loadChart])
+
+  useEffect(() => { notesRef.current = notes }, [notes])
 
   useEffect(() => {
     if (!chart || debouncedContent === lastSaved.current) return
@@ -570,6 +588,42 @@ export default function ChartDetailPage() {
     if (activeSection === section) setSection('house1')
     await fetch(`/api/chart/${id}/notes`, { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ section }) })
   }
+
+  useEffect(() => {
+    setAiPrediction(notesRef.current['ai-' + activeSection] ?? null)
+    setAiError(null)
+  }, [activeSection])
+
+  const generatePrediction = async () => {
+    setAiLoading(true); setAiError(null); setAiPrediction(null)
+    try {
+      const res = await fetch(`/api/chart/${id}/ai-predict`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section: activeSection }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setAiError(data.error ?? 'Failed to generate prediction.')
+      } else {
+        const prediction = data.prediction ?? ''
+        setAiPrediction(prediction)
+        const aiSection = 'ai-' + activeSection
+        setNotes(prev => ({ ...prev, [aiSection]: prediction }))
+        fetch(`/api/chart/${id}/notes`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ section: aiSection, content: prediction }),
+        })
+      }
+    } catch {
+      setAiError('Network error. Please try again.')
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  const canPredict = activeSection.startsWith('house') || activeSection.startsWith('planet-')
 
   if (!chart) {
     return (
@@ -618,13 +672,37 @@ export default function ChartDetailPage() {
     if (activeSection === 'observations')  return <ObservationEntry chartId={id} />
     if (activeSection === 'pred-journal')  return <PredictionEntry chartId={id} currentDasha={currentDashaSummary} />
     return (
-      <textarea
-        value={notes[activeSection] ?? ''}
-        onChange={e => setNotes(prev => ({ ...prev, [activeSection]: e.target.value }))}
-        placeholder={`Notes for ${sectionLabel}…\n\nWrite anything — dictums, observations, predictions, event dates, correlations…`}
-        className="w-full h-full resize-none outline-none text-sm leading-relaxed"
-        style={{ background: 'transparent', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono), monospace', minHeight: 200 }}
-      />
+      <div className="flex flex-col gap-3 h-full">
+        {(aiPrediction || aiError) && (
+          <div className="rounded-xl overflow-hidden flex-shrink-0"
+            style={{ border: '1px solid #7C3AED44', background: 'rgba(124,58,237,0.06)' }}>
+            <div className="flex items-center justify-between px-3 py-2"
+              style={{ background: 'rgba(124,58,237,0.15)', borderBottom: '1px solid #7C3AED33' }}>
+              <div className="flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5" style={{ color: '#A78BFA' }} />
+                <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#A78BFA' }}>Prediction</span>
+              </div>
+              <button onClick={() => { setAiPrediction(null); setAiError(null) }}
+                className="p-0.5 rounded hover:bg-white/10 transition-colors">
+                <X className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
+              </button>
+            </div>
+            <div className="px-4 py-3">
+              {aiError
+                ? <p className="text-xs" style={{ color: '#F87171' }}>{aiError}</p>
+                : <p className="text-sm leading-relaxed" style={{ color: 'var(--text-secondary)' }}>{aiPrediction}</p>
+              }
+            </div>
+          </div>
+        )}
+        <textarea
+          value={notes[activeSection] ?? ''}
+          onChange={e => setNotes(prev => ({ ...prev, [activeSection]: e.target.value }))}
+          placeholder={`Notes for ${sectionLabel}…\n\nWrite anything — dictums, observations, predictions, event dates, correlations…`}
+          className="flex-1 resize-none outline-none text-sm leading-relaxed"
+          style={{ background: 'transparent', color: 'var(--text-primary)', fontFamily: 'var(--font-geist-mono), monospace', minHeight: 200 }}
+        />
+      </div>
     )
   }
 
@@ -638,21 +716,33 @@ export default function ChartDetailPage() {
             Lahiri · Mean Nodes · Geocentric
           </p>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-xs py-1">
+            <div className="flex justify-between items-start text-xs py-1">
               <span className="font-semibold" style={{ color: '#10B981' }}>Lagna</span>
-              <span style={{ color: 'var(--text-secondary)' }}>{calc.lagna?.formatted}</span>
+              <span className="text-right" style={{ color: 'var(--text-secondary)' }}>
+                <span>{calc.lagna?.formatted}</span>
+                {(calc.lagna?.nakshatra || calc.lagna?.longitude != null) && (
+                  <span className="block text-[10px] leading-tight mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>
+                    {calc.lagna.nakshatra || getNakshatra(calc.lagna.longitude)}
+                  </span>
+                )}
+              </span>
             </div>
-            {Object.entries(calc.planets as Record<string, any>).map(([graha, pos]: [string, any]) => (
-              <button key={graha} onClick={() => setSection(`planet-${graha}`)}
-                className="w-full flex justify-between text-xs py-1 px-1.5 rounded-lg -mx-1.5 transition-colors hover:bg-white/5"
-                style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'inherit' }}>
-                <span className="font-medium" style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'var(--text-secondary)' }}>{graha}</span>
-                <span style={{ color: 'var(--text-muted)' }}>
-                  {pos.formatted}{' '}
-                  <span style={{ color: '#7C3AED' }}>H{calc.houseNumbers?.[graha]}</span>
-                </span>
-              </button>
-            ))}
+            {Object.entries(calc.planets as Record<string, any>).map(([graha, pos]: [string, any]) => {
+              const nakshatra = pos.nakshatra || (pos.longitude != null ? getNakshatra(pos.longitude) : '')
+              return (
+                <button key={graha} onClick={() => setSection(`planet-${graha}`)}
+                  className="w-full flex justify-between items-start text-xs py-1 px-1.5 rounded-lg -mx-1.5 transition-colors hover:bg-white/5"
+                  style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'inherit' }}>
+                  <span className="font-medium" style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'var(--text-secondary)' }}>{graha}</span>
+                  <span className="text-right" style={{ color: 'var(--text-muted)' }}>
+                    <span>{pos.formatted}{' '}<span style={{ color: '#7C3AED' }}>H{calc.houseNumbers?.[graha]}</span></span>
+                    {nakshatra && (
+                      <span className="block text-[10px] leading-tight mt-0.5" style={{ color: 'var(--text-muted)', opacity: 0.7 }}>{nakshatra}</span>
+                    )}
+                  </span>
+                </button>
+              )
+            })}
             <p className="text-[10px] pt-2 border-t" style={{ color: 'var(--text-muted)', borderColor: 'var(--border)' }}>
               Ayanamsa {parseFloat(calc.ayanamsa || 0).toFixed(4)}°
             </p>
@@ -788,16 +878,29 @@ export default function ChartDetailPage() {
           </div>
 
           {/* Section selector */}
-          <div className="flex items-start gap-3 px-4 py-2.5 border-b flex-shrink-0"
+          <div className="flex items-center gap-3 px-4 py-2.5 border-b flex-shrink-0"
             style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
             <SectionDropdown
               active={activeSection} customSections={customSections} notes={notes}
               onSelect={setSection} onDeleteCustom={deleteCustomSection} onAddCustom={addCustomSection}
             />
             {subtitle && (
-              <p className="text-xs leading-relaxed flex-1 pt-2 font-semibold" style={{ color: '#fff' }}>
+              <p className="text-xs leading-relaxed flex-1 font-semibold" style={{ color: '#fff' }}>
                 {subtitle}
               </p>
+            )}
+            {!subtitle && <span className="flex-1" />}
+            {canPredict && (
+              <button
+                onClick={generatePrediction}
+                disabled={aiLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold flex-shrink-0 transition-opacity disabled:opacity-60"
+                style={{ background: 'rgba(124,58,237,0.15)', color: '#A78BFA', border: '1px solid #7C3AED44' }}>
+                {aiLoading
+                  ? <><span className="w-3 h-3 border border-purple-400 border-t-transparent rounded-full animate-spin" />Predicting…</>
+                  : <><Sparkles className="w-3 h-3" />AI Predict</>
+                }
+              </button>
             )}
           </div>
 

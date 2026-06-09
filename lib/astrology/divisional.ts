@@ -4,6 +4,11 @@
 // Verified correct formulas per Brihat Parasara Hora Shastra:
 //   D7, D9, D16, D20, D27, D40, D60  → simple formula works
 //   D2, D3, D4, D10, D12, D24, D45   → specific traditional rules required
+//
+// D2 (Hora): Parivritti + reversal system
+//   odd signs  (signIdx even): forward  → (2s + half) % 12
+//   even signs (signIdx odd):  reversed → (2s + 1 - half) % 12
+//   Planets distribute across all 12 signs (not just Leo/Cancer).
 
 export interface DivisionalData {
   lagna:         number                  // 1–12
@@ -38,11 +43,13 @@ function divisionalSign(longitude: number, n: number): number {
 
   switch (n) {
     case 2: {
-      // Hora — odd signs: [Leo, Cancer]; even signs: [Cancer, Leo]
-      const half = Math.floor(posInSign * 2 / 30)   // 0 or 1
+      // Hora — Parivritti + reversal:
+      //   odd signs  (signIdx even): count forward   → (2s + h) % 12
+      //   even signs (signIdx odd):  count backward  → (2s + 1 - h) % 12
+      const half = Math.floor(posInSign / 15)  // 0 or 1
       return signIdx % 2 === 0
-        ? (half === 0 ? 4 : 3)   // odd sign: 1st half→Leo, 2nd→Cancer
-        : (half === 0 ? 3 : 4)   // even sign: 1st half→Cancer, 2nd→Leo
+        ? (2 * signIdx + half) % 12
+        : (2 * signIdx + 1 - half) % 12
     }
 
     case 3: {

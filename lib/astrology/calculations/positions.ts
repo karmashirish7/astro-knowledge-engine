@@ -2,6 +2,8 @@
 // require() is inside calculateChart (not module scope) so Next.js static
 // analysis never freezes sw=null at import time.
 
+import { nakshatraFromLon } from '../nakshatra'
+
 export const SIGN_NAMES = [
   'Aries', 'Taurus', 'Gemini', 'Cancer', 'Leo', 'Virgo',
   'Libra', 'Scorpio', 'Sagittarius', 'Capricorn', 'Aquarius', 'Pisces',
@@ -17,6 +19,7 @@ export interface PlanetPosition {
   dms:        string
   formatted:  string
   speed:      number   // degrees/day; negative = retrograde
+  nakshatra:  string
 }
 
 export interface ChartPositions {
@@ -49,6 +52,7 @@ function parseLon(lon: number): PlanetPosition {
     dms:        `${deg}°${pad(min)}'${pad(sec)}"`,
     formatted:  `${deg} ${SIGN_NAMES[signIdx]} ${pad(min)}'${pad(sec)}"`,
     speed:      0,
+    nakshatra:  nakshatraFromLon(l),
   }
 }
 
