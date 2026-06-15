@@ -170,7 +170,7 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', maxHeight: '90vh' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b flex-shrink-0" style={{ borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Chart — {chart.name}</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <div className="overflow-y-auto p-5 space-y-4">
           {inp('Name', 'name', 'text', 'Full name')}
@@ -306,7 +306,7 @@ function HousePanel({ house, planets, entries, dictums, onClose }: {
                 ))}
           </div>
         </div>
-        <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A] transition-colors ml-2">
+        <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)] transition-colors ml-2">
           <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
         </button>
       </div>
@@ -402,7 +402,7 @@ function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {results.map((city, i) => (
             <button key={i} onClick={() => pick(city)}
-              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 transition-colors hover:bg-[#1E1E2A]"
+              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 transition-colors hover:bg-[var(--bg-hover)]"
               style={{ borderColor: 'var(--border)' }}>
               <div>
                 <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{city.name}</span>
@@ -1068,7 +1068,7 @@ export default function ChartPage() {
                 </motion.button>
                 <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
                   onClick={handleDelete}
-                  className="p-1.5 rounded-lg hover:bg-[#1E1E2A] transition-colors">
+                  className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
                   <Trash2 className="w-3.5 h-3.5" style={{ color: '#EF4444' }} />
                 </motion.button>
               </div>

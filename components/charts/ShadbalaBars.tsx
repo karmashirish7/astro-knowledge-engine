@@ -349,7 +349,7 @@ function BarChart({ data }: { data: Record<string, number> }) {
   return (
     <svg viewBox={`0 0 ${W} ${totalH}`} style={{ width:'100%', display:'block', overflow:'visible' }}>
       {/* Zero line */}
-      <line x1={0} y1={baselineY} x2={W} y2={baselineY} stroke="#3A3A52" strokeWidth={1} />
+      <line x1={0} y1={baselineY} x2={W} y2={baselineY} stroke="#CBD5E1" strokeWidth={1} />
 
       {PLANETS_7.map((planet, i) => {
         const val = data[planet] ?? 0
@@ -366,7 +366,7 @@ function BarChart({ data }: { data: Record<string, number> }) {
             <text
               x={x + barW / 2}
               y={val >= 0 ? by - 2 : by + bh + VAL_H - 1}
-              textAnchor="middle" fill="#E2E8F0" fontSize={7.5} fontWeight="700" fontFamily="monospace"
+              textAnchor="middle" fill="#1E293B" fontSize={7.5} fontWeight="700" fontFamily="monospace"
             >
               {Number.isInteger(val) ? val : val.toFixed(1)}
             </text>

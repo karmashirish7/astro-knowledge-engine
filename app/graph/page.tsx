@@ -54,7 +54,7 @@ export default function GraphPage() {
                   <div className="w-2 h-2 rounded-full" style={{ background: CATEGORY_COLORS[selectedNode.data?.category] || '#94A3B8' }} />
                   <span className="text-xs font-medium" style={{ color: 'var(--text-muted)' }}>{selectedNode.data?.category}</span>
                 </div>
-                <button onClick={() => setSelectedNode(null)} className="p-1 rounded hover:bg-[#1E1E2A] transition-colors">
+                <button onClick={() => setSelectedNode(null)} className="p-1 rounded hover:bg-[var(--bg-hover)] transition-colors">
                   <X className="w-3 h-3" style={{ color: 'var(--text-muted)' }} />
                 </button>
               </div>

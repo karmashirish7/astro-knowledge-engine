@@ -257,7 +257,7 @@ export default function CategoryPage() {
         style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}
       >
         <Link href="/knowledge">
-          <button className="p-1.5 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+          <button className="p-1.5 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
             <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
         </Link>
@@ -365,10 +365,10 @@ export default function CategoryPage() {
                     <h2 className="text-2xl font-bold mt-2" style={{ color: 'var(--text-primary)' }}>{selected.title}</h2>
                   </div>
                   <div className="flex gap-2 flex-shrink-0">
-                    <button onClick={() => openEdit(selected)} className="p-2 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+                    <button onClick={() => openEdit(selected)} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
                       <Edit3 className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                     </button>
-                    <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+                    <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
                       <Trash2 className="w-4 h-4" style={{ color: '#EF4444' }} />
                     </button>
                   </div>
@@ -434,7 +434,7 @@ export default function CategoryPage() {
                         <div
                           key={e.id}
                           onClick={() => fetchDetail(e)}
-                          className="flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-[#1E1E2A]"
+                          className="flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-[var(--bg-hover)]"
                         >
                           <BookOpen className="w-3.5 h-3.5 flex-shrink-0" style={{ color: CATEGORY_META[e.category]?.color || '#94A3B8' }} />
                           <span className="text-sm flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>{e.title}</span>

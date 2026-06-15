@@ -40,7 +40,7 @@ export default function Modal({ open, onClose, title, children, width = 'max-w-2
           >
             <div className="flex items-center justify-between px-6 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-base font-semibold" style={{ color: 'var(--text-primary)' }}>{title}</h2>
-              <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+              <button onClick={onClose} className="p-1 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
                 <X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>

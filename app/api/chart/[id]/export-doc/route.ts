@@ -53,15 +53,15 @@ function renderKundaliSVG(
     Object.entries(planets).filter(([, hh]) => hh === h).map(([p]) => p)
 
   let s = `<svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" style="display:block;border-radius:8px">`
-  s += `<rect width="400" height="400" fill="#12121C" rx="6"/>`
+  s += `<rect width="400" height="400" fill="#F1F5F9" rx="6"/>`
 
   for (const [h, pts] of Object.entries(POLYGONS)) {
     const house = parseInt(h)
-    const fill  = house === 1 ? 'rgba(124,58,237,0.18)' : 'transparent'
-    s += `<polygon points="${pts}" fill="${fill}" stroke="#3A3A52" stroke-width="1"/>`
+    const fill  = house === 1 ? 'rgba(124,58,237,0.12)' : 'transparent'
+    s += `<polygon points="${pts}" fill="${fill}" stroke="#CBD5E1" stroke-width="1"/>`
   }
 
-  s += `<rect width="400" height="400" fill="none" stroke="#3A3A52" stroke-width="1.5" rx="6"/>`
+  s += `<rect width="400" height="400" fill="none" stroke="#CBD5E1" stroke-width="1.5" rx="6"/>`
 
   for (let house = 1; house <= 12; house++) {
     const [lx, ly] = LABEL[house]
@@ -71,7 +71,7 @@ function renderKundaliSVG(
     const lineH    = 12
     const startY   = ly - ((1 + ps.length) * lineH) / 2
 
-    s += `<text x="${lx}" y="${startY + lineH * 0.5}" text-anchor="middle" dominant-baseline="middle" fill="${isLagna ? '#A78BFA' : '#4B5563'}" font-size="${isLagna ? 12 : 11}" font-weight="${isLagna ? 700 : 600}" font-family="monospace">${sign}</text>`
+    s += `<text x="${lx}" y="${startY + lineH * 0.5}" text-anchor="middle" dominant-baseline="middle" fill="${isLagna ? '#7C3AED' : '#94A3B8'}" font-size="${isLagna ? 12 : 11}" font-weight="${isLagna ? 700 : 600}" font-family="monospace">${sign}</text>`
 
     ps.forEach((planet, pi) => {
       const deg   = planetDegrees[planet]

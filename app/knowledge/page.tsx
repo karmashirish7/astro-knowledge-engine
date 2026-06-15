@@ -247,10 +247,10 @@ function KnowledgeContent() {
                   <h2 className="text-2xl font-bold" style={{ color: 'var(--text-primary)' }}>{selected.title}</h2>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => openEdit(selected)} className="p-2 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+                  <button onClick={() => openEdit(selected)} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
                     <Edit3 className="w-4 h-4" style={{ color: 'var(--text-secondary)' }} />
                   </button>
-                  <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg transition-colors hover:bg-[#1E1E2A]">
+                  <button onClick={() => handleDelete(selected.id)} className="p-2 rounded-lg transition-colors hover:bg-[var(--bg-hover)]">
                     <Trash2 className="w-4 h-4" style={{ color: '#EF4444' }} />
                   </button>
                 </div>
@@ -320,7 +320,7 @@ function KnowledgeContent() {
                     <div className="space-y-1.5">
                       {conns.slice(0, 8).map((e: any) => (
                         <div key={e.id} onClick={() => fetchDetail(e)}
-                          className="flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-[#1E1E2A]">
+                          className="flex items-center gap-2.5 p-2.5 rounded-lg cursor-pointer transition-colors hover:bg-[var(--bg-hover)]">
                           <BookOpen className="w-3.5 h-3.5 flex-shrink-0" style={{ color: '#7C3AED' }} />
                           <span className="text-sm flex-1 truncate" style={{ color: 'var(--text-secondary)' }}>{e.title}</span>
                           <span className="text-[10px] px-1.5 py-0.5 rounded flex-shrink-0"

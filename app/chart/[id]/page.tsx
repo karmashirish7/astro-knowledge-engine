@@ -181,7 +181,7 @@ function CitySearch({ onSelect }: { onSelect: (city: City) => void }) {
           style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
           {results.map((city, i) => (
             <button key={i} onClick={() => { onSelect(city); setQuery(city.name); setOpen(false) }}
-              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 hover:bg-[#1E1E2A]"
+              className="w-full text-left flex items-center justify-between px-3 py-2 border-b last:border-0 hover:bg-[var(--bg-hover)]"
               style={{ borderColor: 'var(--border)' }}>
               <span className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{city.name}</span>
               <span className="text-[10px] font-mono" style={{ color: '#7C3AED' }}>{city.tz}</span>
@@ -259,7 +259,7 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
         style={{ background: 'var(--bg-secondary)', border: '1px solid var(--border)', maxHeight: '90vh' }}>
         <div className="flex items-center justify-between px-5 py-4 border-b" style={{ borderColor: 'var(--border)' }}>
           <h2 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Edit Chart</h2>
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[#1E1E2A]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
+          <button onClick={onClose} className="p-1 rounded-lg hover:bg-[var(--bg-hover)]"><X className="w-4 h-4" style={{ color: 'var(--text-muted)' }} /></button>
         </div>
         <div className="overflow-y-auto p-5 space-y-4">
           {inp('Name', 'name', 'text', 'Full name')}
@@ -683,7 +683,7 @@ export default function ChartDetailPage() {
                 <span className="text-xs font-bold uppercase tracking-widest" style={{ color: '#A78BFA' }}>Prediction</span>
               </div>
               <button onClick={() => { setAiPrediction(null); setAiError(null) }}
-                className="p-0.5 rounded hover:bg-white/10 transition-colors">
+                className="p-0.5 rounded hover:bg-[var(--bg-hover)] transition-colors">
                 <X className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
               </button>
             </div>
@@ -731,7 +731,7 @@ export default function ChartDetailPage() {
               const nakshatra = pos.nakshatra || (pos.longitude != null ? getNakshatra(pos.longitude) : '')
               return (
                 <button key={graha} onClick={() => setSection(`planet-${graha}`)}
-                  className="w-full flex justify-between items-start text-xs py-1 px-1.5 rounded-lg -mx-1.5 transition-colors hover:bg-white/5"
+                  className="w-full flex justify-between items-start text-xs py-1 px-1.5 rounded-lg -mx-1.5 transition-colors hover:bg-[var(--bg-hover)]"
                   style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'inherit' }}>
                   <span className="font-medium" style={{ color: activeSection === `planet-${graha}` ? '#A78BFA' : 'var(--text-secondary)' }}>{graha}</span>
                   <span className="text-right" style={{ color: 'var(--text-muted)' }}>
@@ -819,7 +819,7 @@ export default function ChartDetailPage() {
       <div className="flex items-center gap-3 px-5 py-3 border-b flex-shrink-0"
         style={{ borderColor: 'var(--border)', background: 'var(--bg-secondary)' }}>
         <Link href="/chart">
-          <button className="p-1.5 rounded-lg hover:bg-[#1E1E2A] transition-colors">
+          <button className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
             <ArrowLeft className="w-4 h-4" style={{ color: 'var(--text-muted)' }} />
           </button>
         </Link>

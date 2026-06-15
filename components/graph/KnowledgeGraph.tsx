@@ -27,7 +27,7 @@ function AstroNode({ data, selected }: NodeProps) {
   const isCircle = shape === 'circle'
 
   const containerStyle: React.CSSProperties = {
-    background: '#141428',
+    background: '#FFFFFF',
     border: `2px solid ${selected ? color : color + '88'}`,
     borderRadius: isCircle || shape === 'pill' ? 999 : 10,
     padding: isCircle ? '6px' : '9px 15px',
@@ -40,8 +40,8 @@ function AstroNode({ data, selected }: NodeProps) {
     alignItems: 'center',
     justifyContent: 'center',
     boxShadow: selected
-      ? `0 0 22px ${color}55, 0 4px 20px rgba(0,0,0,0.6)`
-      : '0 4px 16px rgba(0,0,0,0.5)',
+      ? `0 0 22px ${color}55, 0 4px 20px rgba(0,0,0,0.12)`
+      : '0 2px 8px rgba(0,0,0,0.08)',
     cursor: 'pointer',
   }
 
@@ -56,7 +56,7 @@ function AstroNode({ data, selected }: NodeProps) {
             {data.category as string}
           </p>
         )}
-        <p style={{ fontSize: isCircle ? 10 : 13, fontWeight: 700, color: '#F1F5F9',
+        <p style={{ fontSize: isCircle ? 10 : 13, fontWeight: 700, color: '#0F172A',
           textAlign: 'center', lineHeight: 1.3, wordBreak: 'break-word' }}>
           {data.label as string}
         </p>
@@ -103,7 +103,7 @@ function layoutNodes(rawNodes: any[], rawEdges: any[]) {
     type: 'smoothstep', animated: true,
     style: { stroke: '#7C3AED88', strokeWidth: 1.5 },
     labelStyle: { fill: '#94A3B8', fontSize: 10, fontFamily: 'monospace' },
-    labelBgStyle: { fill: '#141428', fillOpacity: 0.9 },
+    labelBgStyle: { fill: '#F1F5F9', fillOpacity: 0.9 },
     labelBgPadding: [4, 3] as [number, number],
     markerEnd: { type: MarkerType.ArrowClosed, color: '#7C3AED88' },
   }))
@@ -145,7 +145,7 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
       ...params, type: edgeType, animated: true,
       style: { stroke: '#7C3AED88', strokeWidth: 1.5 },
       labelStyle: { fill: '#94A3B8', fontSize: 10 },
-      labelBgStyle: { fill: '#141428', fillOpacity: 0.9 },
+      labelBgStyle: { fill: '#F1F5F9', fillOpacity: 0.9 },
       markerEnd: { type: MarkerType.ArrowClosed, color: '#7C3AED88' },
     }, eds))
   }, [edgeType])
@@ -187,9 +187,9 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
   // ── Toolbar styles ──────────────────────────────────────────────────────
   const toolBtn = (active: boolean): React.CSSProperties => ({
     padding: '5px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11,
-    fontWeight: 600, border: `1px solid ${active ? '#7C3AED' : '#3A3A52'}`,
-    background: active ? '#7C3AED' : '#1E1E30',
-    color: active ? 'white' : '#94A3B8',
+    fontWeight: 600, border: `1px solid ${active ? '#7C3AED' : '#CBD5E1'}`,
+    background: active ? '#7C3AED' : '#F1F5F9',
+    color: active ? 'white' : '#475569',
   })
 
   if (loading) {
@@ -223,22 +223,22 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
         nodeTypes={nodeTypes}
         fitView fitViewOptions={{ padding: 0.18 }}
         minZoom={0.05} maxZoom={3}
-        style={{ background: '#0D0D1A' }}
+        style={{ background: '#F8FAFC' }}
       >
-        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#232336" />
-        <Controls style={{ background: '#141428', border: '1px solid #2A2A3A', borderRadius: 8 }} />
+        <Background variant={BackgroundVariant.Dots} gap={24} size={1} color="#CBD5E1" />
+        <Controls style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 8 }} />
         <MiniMap
           nodeColor={n => CATEGORY_COLORS[(n.data as any)?.category] || '#94A3B8'}
-          maskColor="rgba(10,10,20,0.85)"
-          style={{ background: '#141428', border: '1px solid #2A2A3A', borderRadius: 8 }}
+          maskColor="rgba(248,250,252,0.85)"
+          style={{ background: '#F1F5F9', border: '1px solid #CBD5E1', borderRadius: 8 }}
         />
 
         {/* ── Toolbar ─────────────────────────────────────────────── */}
         <Panel position="top-left">
           <div style={{
-            background: '#141428', border: '1px solid #2A2A3A', borderRadius: 10,
+            background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 10,
             padding: '8px 14px', display: 'flex', alignItems: 'center', gap: 14,
-            boxShadow: '0 4px 20px rgba(0,0,0,0.5)',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.06)',
           }}>
 
             {/* Shape picker */}
@@ -256,7 +256,7 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
               })}
             </div>
 
-            <div style={{ width: 1, height: 22, background: '#2A2A3A' }} />
+            <div style={{ width: 1, height: 22, background: '#CBD5E1' }} />
 
             {/* Edge type picker */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -273,7 +273,7 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
               ))}
             </div>
 
-            <div style={{ width: 1, height: 22, background: '#2A2A3A' }} />
+            <div style={{ width: 1, height: 22, background: '#CBD5E1' }} />
 
             {/* Add node */}
             <button onClick={() => setShowAdd(true)} style={{
@@ -304,10 +304,10 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
           display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 30,
         }} onClick={e => { if (e.target === e.currentTarget) setShowAdd(false) }}>
           <div style={{
-            background: '#141428', border: '1px solid #3A3A52', borderRadius: 14,
-            padding: 28, width: 340, boxShadow: '0 24px 60px rgba(0,0,0,0.8)',
+            background: '#FFFFFF', border: '1px solid #CBD5E1', borderRadius: 14,
+            padding: 28, width: 340, boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
           }}>
-            <h3 style={{ color: '#F1F5F9', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>
+            <h3 style={{ color: '#0F172A', fontSize: 15, fontWeight: 700, marginBottom: 18 }}>
               Add Node
             </h3>
 
@@ -319,15 +319,15 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
               placeholder="Label…"
               style={{
                 width: '100%', padding: '9px 13px', borderRadius: 8, marginBottom: 10,
-                background: '#1E1E30', border: '1px solid #3A3A52',
-                color: '#F1F5F9', fontSize: 13, outline: 'none',
+                background: '#F1F5F9', border: '1px solid #CBD5E1',
+                color: '#0F172A', fontSize: 13, outline: 'none',
               }}
             />
 
             <select value={addCat} onChange={e => setAddCat(e.target.value)} style={{
               width: '100%', padding: '9px 13px', borderRadius: 8, marginBottom: 12,
-              background: '#1E1E30', border: '1px solid #3A3A52',
-              color: '#F1F5F9', fontSize: 13, outline: 'none', cursor: 'pointer',
+              background: '#F1F5F9', border: '1px solid #CBD5E1',
+              color: '#0F172A', fontSize: 13, outline: 'none', cursor: 'pointer',
             }}>
               {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
@@ -336,9 +336,9 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
               {(['rect', 'pill', 'circle'] as NodeShape[]).map(s => (
                 <button key={s} onClick={() => setAddShape(s)} style={{
                   flex: 1, padding: '7px 0', borderRadius: 7, cursor: 'pointer',
-                  background: addShape === s ? '#7C3AED' : '#1E1E30',
-                  color: addShape === s ? 'white' : '#6B7280',
-                  border: `1px solid ${addShape === s ? '#7C3AED' : '#3A3A52'}`,
+                  background: addShape === s ? '#7C3AED' : '#F1F5F9',
+                  color: addShape === s ? 'white' : '#475569',
+                  border: `1px solid ${addShape === s ? '#7C3AED' : '#CBD5E1'}`,
                   fontSize: 11, fontWeight: 600,
                 }}>
                   {s}
@@ -349,15 +349,15 @@ export default function KnowledgeGraph({ onNodeClick }: Props) {
             <div style={{ display: 'flex', gap: 8 }}>
               <button onClick={() => setShowAdd(false)} style={{
                 flex: 1, padding: '9px', borderRadius: 8, cursor: 'pointer',
-                background: '#1E1E30', border: '1px solid #3A3A52',
-                color: '#94A3B8', fontSize: 13,
+                background: '#F1F5F9', border: '1px solid #CBD5E1',
+                color: '#475569', fontSize: 13,
               }}>
                 Cancel
               </button>
               <button onClick={handleAddNode} disabled={!addLabel.trim()} style={{
                 flex: 1, padding: '9px', borderRadius: 8, cursor: addLabel.trim() ? 'pointer' : 'not-allowed',
-                background: addLabel.trim() ? '#7C3AED' : '#3A3A52', border: 'none',
-                color: addLabel.trim() ? 'white' : '#6B7280', fontSize: 13, fontWeight: 700,
+                background: addLabel.trim() ? '#7C3AED' : '#E2E8F0', border: 'none',
+                color: addLabel.trim() ? 'white' : '#94A3B8', fontSize: 13, fontWeight: 700,
               }}>
                 Add
               </button>

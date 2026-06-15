@@ -102,7 +102,7 @@ export default function Dashboard() {
               <>
                 {results.entries?.slice(0, 5).map((e: any) => (
                   <Link key={e.id} href={`/knowledge?id=${e.id}`}>
-                    <div className="flex items-center gap-3 px-4 py-3 border-b transition-colors hover:bg-[#1E1E2A]" style={{ borderColor: 'var(--border)' }}>
+                    <div className="flex items-center gap-3 px-4 py-3 border-b transition-colors hover:bg-[var(--bg-hover)]" style={{ borderColor: 'var(--border)' }}>
                       <BookOpen className="w-4 h-4 flex-shrink-0" style={{ color: '#7C3AED' }} />
                       <div><p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{e.title}</p>
                       <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{e.category}</p></div>
@@ -111,7 +111,7 @@ export default function Dashboard() {
                 ))}
                 {results.dictums?.slice(0, 3).map((d: any) => (
                   <Link key={d.id} href="/dictums">
-                    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[#1E1E2A]">
+                    <div className="flex items-center gap-3 px-4 py-3 transition-colors hover:bg-[var(--bg-hover)]">
                       <FileText className="w-4 h-4 flex-shrink-0" style={{ color: '#EC4899' }} />
                       <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>{d.rule}</p>
                     </div>
@@ -183,7 +183,7 @@ export default function Dashboard() {
             ) : recent.map((e, i) => (
               <motion.div key={e.id} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.05 }}>
                 <Link href={`/knowledge?id=${e.id}`}>
-                  <div className="flex items-center gap-3 p-4 rounded-xl transition-colors hover:bg-[#1E1E2A] cursor-pointer"
+                  <div className="flex items-center gap-3 p-4 rounded-xl transition-colors hover:bg-[var(--bg-hover)] cursor-pointer"
                     style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
                     <Clock className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--text-muted)' }} />
                     <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ export default function Dashboard() {
           <h2 className="text-xs font-semibold mb-3 uppercase tracking-wider" style={{ color: 'var(--text-muted)' }}>Graha Reference</h2>
           <div className="rounded-xl overflow-hidden" style={{ background: 'var(--bg-card)', border: '1px solid var(--border)' }}>
             {PLANETS.map(p => (
-              <div key={p.name} className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0 hover:bg-[#1E1E2A] transition-colors"
+              <div key={p.name} className="flex items-center gap-3 px-4 py-2.5 border-b last:border-0 hover:bg-[var(--bg-hover)] transition-colors"
                 style={{ borderColor: 'var(--border)' }}>
                 <span className="text-xl w-7 text-center" style={{ color: p.color }}>{p.sym}</span>
                 <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>{p.name}</span>

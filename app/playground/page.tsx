@@ -454,7 +454,7 @@ export default function PlaygroundPage() {
                           </div>
                           <div className="flex items-center gap-2 flex-shrink-0">
                             <Link href={`/chart/${chart.id}`} onClick={e => e.stopPropagation()}
-                              className="p-1.5 rounded-lg hover:bg-[#1E1E2A] transition-colors">
+                              className="p-1.5 rounded-lg hover:bg-[var(--bg-hover)] transition-colors">
                               <ExternalLink className="w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
                             </Link>
                             <ChevronRight

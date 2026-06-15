@@ -55,7 +55,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
           {visualLagnaHouse !== 1 && (
             <button
               onClick={() => setVLagna(1)}
-              className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-white/5"
+              className="text-[10px] px-2 py-0.5 rounded transition-colors hover:bg-[var(--bg-hover)]"
               style={{ color: '#EC4899', border: '1px solid #EC489933' }}>
               ↺ Reset lagna
             </button>

@@ -1,7 +1,7 @@
 /**
  * Bikram Sambat (BS) ↔ Anno Domini (AD) civil calendar converter.
  *
- * Reference epoch: BS 2000 Baisakh 1 = 13 April 1943 AD (Gregorian).
+ * Reference epoch: BS 2000 Baisakh 1 = 14 April 1943 AD (Gregorian).
  *
  * Data source: Government of Nepal official calendar publication and
  * Nepal Calendar Standardisation Committee (NCSC) tables.
@@ -170,9 +170,9 @@ const DATA: Record<number, readonly number[]> = {
   2100: [31, 31, 31, 32, 31, 31, 30, 29, 30, 29, 30, 30],
 }
 
-// Epoch: BS 2000 Baisakh 1 = 13 April 1943 AD
+// Epoch: BS 2000 Baisakh 1 = 14 April 1943 AD
 const EPOCH_YEAR = 2000
-const EPOCH_AD   = new Date(Date.UTC(1943, 3, 13)) // months are 0-indexed
+const EPOCH_AD   = new Date(Date.UTC(1943, 3, 14)) // months are 0-indexed
 
 export const BS_MIN_YEAR = 1970
 export const BS_MAX_YEAR = 2100
@@ -226,7 +226,7 @@ export interface BsDate { year: number; month: number; day: number }
 export function adToBs(adDate: Date): BsDate {
   // Days from epoch to the given AD date
   const msPerDay = 86400000
-  let remaining = Math.round((Date.UTC(adDate.getFullYear(), adDate.getMonth(), adDate.getDate()) - EPOCH_AD.getTime()) / msPerDay)
+  let remaining = Math.round((Date.UTC(adDate.getUTCFullYear(), adDate.getUTCMonth(), adDate.getUTCDate()) - EPOCH_AD.getTime()) / msPerDay)
 
   let bsYear = EPOCH_YEAR
 

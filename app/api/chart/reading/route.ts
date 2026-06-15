@@ -484,16 +484,56 @@ ${allPlanetLines}
 HOUSE-BY-HOUSE BREAKDOWN:
 ${houseLines}`
 
-    const raw = await callOpenRouter([
-      { role: 'system', content: READING_SYSTEM_PROMPT },
-      { role: 'user', content: `Write the complete Vedic chart reading now. Include all 12 houses.\n\n${chartContext}` },
-      { role: 'assistant', content: '# Chart Reading\n\n' },
-    ], 7000)
+    const SECTION_PROMPT = `You are a Vedic astrology teacher writing a natal chart reading. Use ONLY the planetary data provided.
 
-    // Strip any question/preamble before ## Lagna Analysis; keep everything from there onward
-    const lagnaIdx = raw.search(/^##\s*Lagna Analysis/im)
-    const cleanBody = lagnaIdx > 0 ? raw.slice(lagnaIdx) : raw
-    const fullReading = '# Chart Reading\n\n' + cleanBody
+OUTPUT RULES:
+- Start immediately with the first heading requested. No preamble, no questions, no offers to continue.
+- Write EVERY section requested in full — do NOT use placeholders like "[remaining houses follow the same pattern]"
+- Every house section: 160-200 words of flowing prose
+- Every house section MUST include: (1) GIFT of the placement, (2) CHALLENGE — specific, concrete difficulty or health/relationship risk, (3) MITIGATION — one actionable practice
+- Second person throughout ("You…", "Your…")
+- Name actual planets, signs, and house numbers in every sentence
+- Challenges must be specific: "your ego clashes in marriage will make your partner feel dominated" not "there may be some challenges"
+- Do NOT use: "journey", "embrace", "harness", "beautiful soul", "divine plan", "truly blessed"
+- Do NOT end with questions or offers to write more`
+
+    // ── 3 parallel-ish sequential calls, each ~2500 tokens ────────────────
+    const [part1, part2, part3] = await Promise.all([
+      callOpenRouter([
+        { role: 'system', content: SECTION_PROMPT },
+        { role: 'user', content: `Write the Lagna Analysis and House Readings for Houses 1, 2, 3, and 4.\n\n${chartContext}` },
+        { role: 'assistant', content: '## Lagna Analysis\n\n' },
+      ], 2500),
+      callOpenRouter([
+        { role: 'system', content: SECTION_PROMPT },
+        { role: 'user', content: `Write House Readings for Houses 5, 6, 7, and 8 only.\n\n${chartContext}` },
+        { role: 'assistant', content: '### House 5 — Putra (Intelligence & Children)\n\n' },
+      ], 2500),
+      callOpenRouter([
+        { role: 'system', content: SECTION_PROMPT },
+        { role: 'user', content: `Write House Readings for Houses 9, 10, 11, and 12. Then write "## Key Planetary Observations" (4-5 prose paragraphs on significant patterns, yogas, challenges). Then write "## Recommendations for the Native" as bullet points for career, wealth, relationships, health, inner peace, remedy, and truth.\n\n${chartContext}` },
+        { role: 'assistant', content: '### House 9 — Dharma (Fortune & Father)\n\n' },
+      ], 3000),
+    ])
+
+    function stripTrailing(s: string): string {
+      return s
+        .replace(/\n*\[[^\]]*(?:would you like|continue|shall i|following|standard format|remaining|similar)[^\]]*\]/gi, '')
+        .replace(/\n*(?:would you like|shall i|if you(?:'d| would) like|should i|do you want)[^]*$/i, '')
+        .trimEnd()
+    }
+
+    const fullReading = [
+      '# Chart Reading',
+      '',
+      stripTrailing(part1),
+      '',
+      '## House Readings',
+      '',
+      stripTrailing(part2),
+      '',
+      stripTrailing(part3),
+    ].join('\n')
 
     if (chartId) {
       await prisma.prediction.create({
