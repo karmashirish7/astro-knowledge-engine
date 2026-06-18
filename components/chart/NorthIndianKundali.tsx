@@ -18,6 +18,7 @@ interface Props {
   planets:              Record<string, number>   // planet → ORIGINAL house number
   planetDegrees?:       Record<string, number>
   planetRetrograde?:    Record<string, boolean>
+  overlayPlanets?:      Record<string, number>   // superimposed div planets → D1 house number
   onHouseClick?:        (house: number) => void
   highlightAspects?:    boolean
   visualLagnaHouse?:    number                   // which original house is visual house 1 (default 1)
@@ -25,8 +26,8 @@ interface Props {
 }
 
 export default function NorthIndianKundali({
-  lagna, planets, planetDegrees = {}, planetRetrograde = {}, onHouseClick,
-  visualLagnaHouse = 1, onVisualLagnaChange,
+  lagna, planets, planetDegrees = {}, planetRetrograde = {}, overlayPlanets,
+  onHouseClick, visualLagnaHouse = 1, onVisualLagnaChange,
 }: Props) {
   const [hovered, setHovered] = useState<number | null>(null)
   const [ctxMenu, setCtxMenu] = useState<{ vPos: number; x: number; y: number } | null>(null)
@@ -57,6 +58,15 @@ export default function NorthIndianKundali({
   )
   const planetsAtVisualPos = (vPos: number) =>
     Object.entries(visualPlanets).filter(([, h]) => h === vPos).map(([p]) => p)
+
+  // Overlay (superimposed) planets
+  const visualOverlay = overlayPlanets
+    ? Object.fromEntries(
+        Object.entries(overlayPlanets).map(([p, h]) => [p, ((h - V + 12) % 12) + 1])
+      )
+    : {}
+  const overlayAtVisualPos = (vPos: number) =>
+    Object.entries(visualOverlay).filter(([, h]) => h === vPos).map(([p]) => p)
 
   // Original house of what's shown at visual position vPos
   const originalHouseOf = (vPos: number) => ((vPos - 1 + V - 1) % 12) + 1
@@ -130,9 +140,10 @@ export default function NorthIndianKundali({
           const isVLagna = vPos === 1
           const isALagna = isRotated && vPos === actualLagnaVisualPos
 
+          const ops        = overlayAtVisualPos(vPos)
           const lineH      = 15
           const extraLines = isALagna ? 1 : 0
-          const totalLines = 1 + ps.length + extraLines
+          const totalLines = 1 + ps.length + ops.length + extraLines
           const startY     = ly - (totalLines * lineH) / 2
 
           return (
@@ -178,6 +189,26 @@ export default function NorthIndianKundali({
                   >
                     {label}
                   </text>
+                )
+              })}
+
+              {/* Overlay (superimposed) planets — circled */}
+              {ops.map((planet, pi) => {
+                const abbr    = PLANET_ABBR[planet] ?? planet.slice(0, 2)
+                const color   = PLANET_COLORS[planet] ?? '#1E293B'
+                const yOffset = isALagna ? 2.5 + ps.length + pi : 1.5 + ps.length + pi
+                const cy      = startY + lineH * yOffset
+                return (
+                  <g key={`ov-${planet}`}>
+                    <circle cx={lx} cy={cy} r={8} fill="white" fillOpacity={0.85} stroke={color} strokeWidth={1.5} />
+                    <text
+                      x={lx} y={cy}
+                      textAnchor="middle" dominantBaseline="middle"
+                      fill={color} fontSize={9} fontWeight="900" fontFamily="monospace"
+                    >
+                      {abbr}
+                    </text>
+                  </g>
                 )
               })}
             </g>

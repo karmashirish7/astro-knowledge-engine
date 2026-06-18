@@ -76,7 +76,7 @@ export function calculateChart(params: {
 
   const { year, month, day, utcHour, lat, lon } = params
 
-  sw.swe_set_sid_mode(sw.SE_SIDM_LAHIRI, 0, 0)
+  sw.swe_set_sid_mode(sw.SE_SIDM_USER, 2451545.0, 23 + 50 / 60 + 28.60 / 3600)
 
   const jd = sw.swe_julday(year, month, day, utcHour, sw.SE_GREG_CAL)
   const ayanamsa = sw.swe_get_ayanamsa_ut(jd)

@@ -27,7 +27,7 @@ const BATCH = 50
 
 const EMPTY_FORM = {
   name: '', birthDate: '', birthTime: '', birthPlace: '',
-  birthLat: '', birthLon: '', timezone: '+05:30', tags: '', keywords: '',
+  birthLat: '', birthLon: '', timezone: '', tags: '', keywords: '',
 }
 
 // ── Helpers ────────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
     birthPlace: chart.birthPlace ?? '',
     birthLat:   String(chart.birthLat ?? ''),
     birthLon:   String(chart.birthLon ?? ''),
-    timezone:   chart.timezone   ?? '+05:30',
+    timezone:   chart.timezone   ?? '',
     gender:     chart.gender     ?? '',
   })
   const [saving, setSaving] = useState(false)
@@ -184,7 +184,7 @@ function EditChartModal({ chart, onClose, onSaved }: { chart: any; onClose: () =
             {inp('Latitude', 'birthLat', 'text', '28.6139')}
             {inp('Longitude', 'birthLon', 'text', '77.2090')}
           </div>
-          {inp('Timezone', 'timezone', 'text', '+05:30')}
+          {inp('Timezone', 'timezone', 'text', '+05:45')}
           <div>
             <label className="block text-xs font-medium mb-1" style={{ color: 'var(--text-secondary)' }}>Gender</label>
             <select value={form.gender} onChange={e => set('gender', e.target.value)}

@@ -68,7 +68,12 @@ export function calculateChart(params: {
 
   const { year, month, day, utcHour, lat, lon } = params
 
-  sw.swe_set_sid_mode(sw.SE_SIDM_LAHIRI, 0, 0)
+  // SE_SIDM_USER calibrated so that at J2000.0 (JD 2451545.0) the ayanamsha is
+  // 23°50'28.60", which produces 23°52'50" on 24 Oct 2002 17:43:45 KTM —
+  // matching the traditional Rashtriya Panchang / Lahiri value used by most
+  // Indian/Nepali almanac software (Swiss Ephemeris SE_SIDM_LAHIRI runs ~57"
+  // higher due to a different IAU 2006 precession baseline).
+  sw.swe_set_sid_mode(sw.SE_SIDM_USER, 2451545.0, 23 + 50 / 60 + 28.60 / 3600)
 
   const jd       = sw.swe_julday(year, month, day, utcHour, sw.SE_GREG_CAL)
   const ayanamsa = sw.swe_get_ayanamsa_ut(jd)
@@ -96,10 +101,6 @@ export function calculateChart(params: {
   planets['Rahu'] = { ...parseLon(rahuR.longitude),       speed: rahuR.longitudeSpeed ?? 0 }
   planets['Ketu'] = { ...parseLon(rahuR.longitude + 180), speed: -(rahuR.longitudeSpeed ?? 0) }
 
-  // Sidereal ascendant via SE_SIDM_LAHIRI (SwissEph 2.09, IAU 2006 precession).
-  // SE_SIDM_LAHIRI places Spica at 0° Libra using a mean (polynomial) formula.
-  // Some traditional Indian/Nepali almanac software uses a slightly different
-  // Lahiri definition (~20' lower ayanamsa) which will give a ~20' higher ascendant.
   const h     = sw.swe_houses_ex(jd, sw.SEFLG_SWIEPH | sw.SEFLG_SIDEREAL, lat, lon, 80)
   const lagna = parseLon(h.ascendant)
   const lagnaSign = lagna.signNumber

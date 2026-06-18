@@ -102,6 +102,12 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
         create: flattenToPlanetaryData(id, newCalc, birthDateObj) as never,
         update: flattenToPlanetaryData(id, newCalc, birthDateObj) as never,
       })
+      // Re-fetch so the response includes the freshly written planetaryData
+      const refreshed = await prisma.chart.findUnique({
+        where:   { id },
+        include: { planetaryData: true, chartNotes: { orderBy: { order: 'asc' } } },
+      })
+      return NextResponse.json(withPlanets(refreshed!))
     }
 
     return NextResponse.json(withPlanets(chart))

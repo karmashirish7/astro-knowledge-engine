@@ -72,7 +72,7 @@ export async function POST(req: NextRequest) {
         birthPlace:          birthPlace || '',
         birthLat:            birthLat   || '',
         birthLon:            birthLon   || '',
-        timezone:            timezone   || '+05:30',
+        timezone:            timezone   || '',
         lagna:               calc ? String(calc.lagnaSign) : '',
         calculatedPositions: calc ? JSON.stringify(calc) : '{}',
         source:              source     || '',

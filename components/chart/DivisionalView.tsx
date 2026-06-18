@@ -21,6 +21,7 @@ const SELECTOR_OPTIONS = [
 export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {}, onHouseClick }: Props) {
   const [selVal, setSelVal]           = useState('9')
   const [visualLagnaHouse, setVLagna] = useState(1)
+  const [superimpose, setSuperimpose] = useState(false)
 
   const hasPrecise  = !!(calc?.lagna?.longitude && calc?.planets)
   const isChalit    = selVal === 'chalit'
@@ -40,6 +41,18 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
 
   const rightChart = isChalit ? chalit : div
 
+  // Superimpose: map each div planet's sign → D1 house number
+  const overlayPlanets: Record<string, number> | undefined =
+    superimpose && div && !isChalit
+      ? Object.fromEntries(
+          Object.entries(div.planets).map(([planet, divHouse]) => {
+            const divSign = ((div.lagna - 1 + divHouse - 1) % 12) + 1
+            const d1House = ((divSign - d1Lagna + 12) % 12) + 1
+            return [planet, d1House]
+          })
+        )
+      : undefined
+
   return (
     <div className="w-full">
       {/* Single controls row */}
@@ -52,6 +65,19 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
             style={{ color: isChalit ? '#F59E0B' : '#10B981' }}>
             {selected.abbr} · {selected.name}
           </span>
+          {hasPrecise && !isChalit && (
+            <label className="flex items-center gap-1.5 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={superimpose}
+                onChange={e => setSuperimpose(e.target.checked)}
+                className="w-3 h-3 accent-violet-500 cursor-pointer"
+              />
+              <span className="text-[11px] font-semibold" style={{ color: superimpose ? '#A78BFA' : 'var(--text-muted)' }}>
+                Superimpose
+              </span>
+            </label>
+          )}
           {visualLagnaHouse !== 1 && (
             <button
               onClick={() => setVLagna(1)}
@@ -80,6 +106,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
             planets={d1Planets}
             planetDegrees={d1Degrees}
             planetRetrograde={retrograde}
+            overlayPlanets={overlayPlanets}
             onHouseClick={onHouseClick}
             visualLagnaHouse={visualLagnaHouse}
             onVisualLagnaChange={setVLagna}
