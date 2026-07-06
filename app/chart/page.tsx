@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import {
   Plus, Search, CircleDot, ExternalLink, Sparkles, X,
-  AlertCircle, BookOpen, FileText, Trash2, MapPin, Pencil, Check,
+  AlertCircle, BookOpen, FileText, Trash2, MapPin, Pencil, Check, Download,
 } from 'lucide-react'
 import DivisionalView from '@/components/chart/DivisionalView'
 import Modal from '@/components/ui/Modal'
@@ -925,6 +925,59 @@ export default function ChartPage() {
     finally { setTranslating(false) }
   }
 
+  // ── Export CSV
+  const [exporting, setExporting] = useState(false)
+
+  const handleExport = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch('/api/chart/export')
+      if (!res.ok) return
+      const data: any[] = await res.json()
+
+      const parseArr2 = (s: string): string[] => { try { const p = JSON.parse(s || '[]'); return Array.isArray(p) ? p : [] } catch { return [] } }
+
+      const CSV_COLS = ['label','year','month','day','hour','minute','calendar','time_confidence','place_name','lat','lon','tz','event_domain','event_date']
+      const escape = (v: any) => {
+        const s = v == null ? '' : String(v)
+        return s.includes(',') || s.includes('"') || s.includes('\n') ? `"${s.replace(/"/g, '""')}"` : s
+      }
+
+      const rows = data.map(c => {
+        const [year, month, day] = (c.birthDate || '').split('-')
+        const [hour, minute]     = (c.birthTime || '').split(':')
+        const tags               = parseArr2(c.tagsList)
+        return [
+          c.name        || '',
+          year          || '',
+          month         || '',
+          day           || '',
+          hour          || '',
+          minute        || '',
+          'AD',
+          c.birthTime ? 'exact' : 'unknown',
+          c.birthPlace  || '',
+          c.birthLat    || '',
+          c.birthLon    || '',
+          c.timezone    || '',
+          tags[0]       || '',
+          '',
+        ].map(escape).join(',')
+      })
+
+      const csv  = [CSV_COLS.join(','), ...rows].join('\n')
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href     = url
+      a.download = `charts-export-${new Date().toISOString().slice(0, 10)}.csv`
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
+  }
+
   // ── Delete
   const handleDelete = async () => {
     if (!selected || !confirm(`Delete "${selected.name}"?`)) return
@@ -949,13 +1002,25 @@ export default function ChartPage() {
         <div className="p-4 border-b" style={{ borderColor: 'var(--border)' }}>
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-sm font-bold" style={{ color: 'var(--text-primary)' }}>Charts</h1>
-            <motion.button
-              whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
-              onClick={() => setAddOpen(true)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white"
-              style={{ background: '#10B981' }}>
-              <Plus className="w-3.5 h-3.5" /> New
-            </motion.button>
+            <div className="flex items-center gap-1.5">
+              <motion.button
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={handleExport}
+                disabled={exporting}
+                title="Export all charts as CSV"
+                className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-semibold disabled:opacity-50"
+                style={{ background: 'var(--bg-hover)', color: 'var(--text-secondary)', border: '1px solid var(--border)' }}>
+                <Download className="w-3.5 h-3.5" />
+                {exporting ? '…' : 'CSV'}
+              </motion.button>
+              <motion.button
+                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}
+                onClick={() => setAddOpen(true)}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-semibold text-white"
+                style={{ background: '#10B981' }}>
+                <Plus className="w-3.5 h-3.5" /> New
+              </motion.button>
+            </div>
           </div>
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" style={{ color: 'var(--text-muted)' }} />
