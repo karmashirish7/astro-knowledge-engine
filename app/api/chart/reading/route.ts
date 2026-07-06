@@ -364,22 +364,22 @@ WRITING RULES — STRICTLY ENFORCED:
 - Sound like a wise teacher who respects the native enough to tell them the truth
 ═══════════════════════════════════════════`
 
-async function callOpenRouter(messages: object[], maxTokens = 4000): Promise<string> {
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+async function callDeepSeek(messages: object[], maxTokens = 4000): Promise<string> {
+  const res = await fetch('https://api.deepseek.com/chat/completions', {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+      'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'anthropic/claude-3.5-haiku',
+      model: 'deepseek-chat',
       max_tokens: maxTokens,
       messages,
     }),
   })
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`OpenRouter error: ${body}`)
+    throw new Error(`DeepSeek error: ${body}`)
   }
   const data = await res.json()
   return data.choices?.[0]?.message?.content ?? ''
@@ -389,9 +389,9 @@ export async function POST(req: NextRequest) {
   const session = await auth()
   if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!process.env.OPENROUTER_API_KEY) {
+  if (!process.env.DEEPSEEK_API_KEY) {
     return NextResponse.json(
-      { error: 'OPENROUTER_API_KEY is not set. Add it to your .env file.' },
+      { error: 'DEEPSEEK_API_KEY is not set. Add it to your .env file.' },
       { status: 503 }
     )
   }
@@ -401,7 +401,7 @@ export async function POST(req: NextRequest) {
   // ── Translation mode ────────────────────────────────────────────────────
   if (body.translate_text) {
     try {
-      const text = await callOpenRouter([{
+      const text = await callDeepSeek([{
         role: 'user',
         content: `Translate the following Vedic astrology reading into simple, everyday Nepali. Keep the exact same structure, sections, and markdown headings — translate everything including the headings. Use clear and natural Nepali, not overly formal or literary:\n\n${body.translate_text}`,
       }], 4000)
@@ -499,17 +499,17 @@ OUTPUT RULES:
 
     // ── 3 parallel-ish sequential calls, each ~2500 tokens ────────────────
     const [part1, part2, part3] = await Promise.all([
-      callOpenRouter([
+      callDeepSeek([
         { role: 'system', content: SECTION_PROMPT },
         { role: 'user', content: `Write the Lagna Analysis and House Readings for Houses 1, 2, 3, and 4.\n\n${chartContext}` },
         { role: 'assistant', content: '## Lagna Analysis\n\n' },
       ], 2500),
-      callOpenRouter([
+      callDeepSeek([
         { role: 'system', content: SECTION_PROMPT },
         { role: 'user', content: `Write House Readings for Houses 5, 6, 7, and 8 only.\n\n${chartContext}` },
         { role: 'assistant', content: '### House 5 — Putra (Intelligence & Children)\n\n' },
       ], 2500),
-      callOpenRouter([
+      callDeepSeek([
         { role: 'system', content: SECTION_PROMPT },
         { role: 'user', content: `Write House Readings for Houses 9, 10, 11, and 12. Then write "## Key Planetary Observations" (4-5 prose paragraphs on significant patterns, yogas, challenges). Then write "## Recommendations for the Native" as bullet points for career, wealth, relationships, health, inner peace, remedy, and truth.\n\n${chartContext}` },
         { role: 'assistant', content: '### House 9 — Dharma (Fortune & Father)\n\n' },
