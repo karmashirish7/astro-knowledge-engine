@@ -165,6 +165,22 @@ export function computeBhavChalit(calc: any): BhavChaliData | null {
   }
 }
 
+/**
+ * Superimposes a divisional chart's planets onto the D1 (Rasi) house frame:
+ * each planet's Dn sign is converted to a D1 house number relative to d1Lagna.
+ * Same math used by the "Superimpose" toggle in DivisionalView; shared here so
+ * analytical code (pattern detection across D1/D9/D10) uses identical logic.
+ */
+export function superimposeOntoD1Houses(div: DivisionalData, d1Lagna: number): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(div.planets).map(([planet, divHouse]) => {
+      const divSign = ((div.lagna - 1 + divHouse - 1) % 12) + 1
+      const d1House = ((divSign - d1Lagna + 12) % 12) + 1
+      return [planet, d1House]
+    }),
+  )
+}
+
 export function computeDivisional(calc: any, n: number): DivisionalData | null {
   if (typeof calc?.lagna?.longitude !== 'number' || !calc?.planets) return null
 

@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import NorthIndianKundali from './NorthIndianKundali'
-import { VARGAS, computeDivisional, computeBhavChalit } from '@/lib/astrology/divisional'
+import { VARGAS, computeDivisional, computeBhavChalit, superimposeOntoD1Houses } from '@/lib/astrology/divisional'
 
 interface Props {
   calc:                  any
@@ -23,7 +23,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
   const [visualLagnaHouse, setVLagna] = useState(1)
   const [superimpose, setSuperimpose] = useState(false)
 
-  const hasPrecise  = !!(calc?.lagna?.longitude && calc?.planets)
+  const hasPrecise  = !!(calc?.lagna?.longitude != null && calc?.planets)
   const isChalit    = selVal === 'chalit'
   const divN        = isChalit ? null : Number(selVal)
 
@@ -43,15 +43,7 @@ export default function DivisionalView({ calc, d1Lagna, d1Planets, d1Degrees = {
 
   // Superimpose: map each div planet's sign → D1 house number
   const overlayPlanets: Record<string, number> | undefined =
-    superimpose && div && !isChalit
-      ? Object.fromEntries(
-          Object.entries(div.planets).map(([planet, divHouse]) => {
-            const divSign = ((div.lagna - 1 + divHouse - 1) % 12) + 1
-            const d1House = ((divSign - d1Lagna + 12) % 12) + 1
-            return [planet, d1House]
-          })
-        )
-      : undefined
+    superimpose && div && !isChalit ? superimposeOntoD1Houses(div, d1Lagna) : undefined
 
   return (
     <div className="w-full">

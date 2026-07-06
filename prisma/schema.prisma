@@ -261,9 +261,44 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  charts    Chart[]
+  charts          Chart[]
+  dashaLabThreads DashaLabThread[]
 
   @@map("users")
+}
+
+// ── Dasha Lab (foreign-event research chat) ───────────────────────────────────
+
+model DashaLabThread {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String   @default("New research")
+  workspace    String   @default("[]") // JSON: WorkspaceItem[] — charts/dates currently loaded into this thread
+  predictions  String   @default("[]") // JSON: PersistedPrediction[] — forward-looking scan requests, recomputed fresh on each load
+  dashaLookups String   @default("[]") // JSON: DashaLookupRequest[] — plain "what dasha ran in [year]" lookups, recomputed fresh on each load
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages DashaLabMessage[]
+
+  @@map("dasha_lab_threads")
+}
+
+model DashaLabMessage {
+  id            String   @id @default(cuid())
+  threadId      String
+  role          String   // "user" | "assistant" | "system"
+  content       String
+  knowledgeGap  Boolean  @default(false)
+  category      String   @default("")
+  suggestedRule String   @default("")
+  ruleSaved     Boolean  @default(false)
+  createdAt     DateTime @default(now())
+
+  thread DashaLabThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+
+  @@map("dasha_lab_messages")
 }
 
 // ── Dump Layer ────────────────────────────────────────────────────────────────

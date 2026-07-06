@@ -8,17 +8,18 @@ import { useState } from 'react'
 import Image from 'next/image'
 import {
   LayoutDashboard, Network, CircleDot, Zap, FileText, BookOpen,
-  FlaskConical, Search, LogOut, User,
+  FlaskConical, Search, LogOut, User, Plane,
 } from 'lucide-react'
 
 const TOP_NAV = [
-  { href: '/',           label: 'Dashboard',      icon: LayoutDashboard, color: '#7C3AED' },
-  { href: '/research',   label: 'Research',       icon: Search,          color: '#8B5CF6' },
-  { href: '/chart',      label: 'Chart Analysis', icon: CircleDot,       color: '#10B981' },
-  { href: '/dictums',    label: 'Dictum Engine',  icon: FileText,        color: '#EC4899' },
-  { href: '/playground', label: 'Playground',     icon: FlaskConical,    color: '#06B6D4' },
-  { href: '/graph',      label: 'Graph View',     icon: Network,         color: '#3B82F6' },
-  { href: '/dump',       label: 'Dump Mode',      icon: Zap,             color: '#F59E0B' },
+  { href: '/',                  label: 'Dashboard',      icon: LayoutDashboard, color: '#7C3AED' },
+  { href: '/research',          label: 'Research',       icon: Search,          color: '#8B5CF6' },
+  { href: '/chart',             label: 'Chart Analysis', icon: CircleDot,       color: '#10B981' },
+  { href: '/dictums',           label: 'Dictum Engine',  icon: FileText,        color: '#EC4899' },
+  { href: '/playground',        label: 'Playground',     icon: FlaskConical,    color: '#06B6D4' },
+  { href: '/playground/dasha-lab', label: 'Dasha Lab',   icon: Plane,           color: '#06B6D4' },
+  { href: '/graph',             label: 'Graph View',     icon: Network,         color: '#3B82F6' },
+  { href: '/dump',              label: 'Dump Mode',      icon: Zap,             color: '#F59E0B' },
 ]
 
 const KNOWLEDGE_SECTIONS = [

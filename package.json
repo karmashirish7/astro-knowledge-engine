@@ -33,7 +33,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "reactflow": "^11.11.0",
-    "swisseph": "0.5.17",
+    "swisseph": "^0.5.17",
     "zustand": "^5.0.0"
   },
   "devDependencies": {
@@ -48,5 +48,8 @@
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
     "typescript": "^5"
+  },
+  "allowScripts": {
+    "swisseph@0.5.17": true
   }
 }
