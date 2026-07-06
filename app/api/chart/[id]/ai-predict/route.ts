@@ -385,8 +385,8 @@ WRITING INSTRUCTIONS:
 // ── Route handler ──────────────────────────────────────────────────────────
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  if (!process.env.OPENROUTER_API_KEY) {
-    return NextResponse.json({ error: 'OPENROUTER_API_KEY is not set in environment variables.' }, { status: 500 })
+  if (!process.env.DEEPSEEK_API_KEY) {
+    return NextResponse.json({ error: 'DEEPSEEK_API_KEY is not set in environment variables.' }, { status: 500 })
   }
 
   const { id } = await params
@@ -421,14 +421,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
 ${context}`
 
   try {
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    const res = await fetch('https://api.deepseek.com/chat/completions', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Authorization': `Bearer ${process.env.DEEPSEEK_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'anthropic/claude-3.5-haiku',
+        model: 'deepseek-chat',
         max_tokens: 600,
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
